@@ -327,6 +327,32 @@ The fix is one environment variable. If the endpoint's *policy itself* changed
 (and not just its label), also bump `SCORING_GENERATION` — the stored scores
 were produced under the old policy and should expire.
 
+### Running CoPE-B locally (developer tools only)
+
+On an Apple Silicon Mac with 32 GB+ of memory, CoPE-B can run locally through
+MLX. That makes `classify-gate`, `classify-compare` and `eval-classifiers`
+free, with no GPU cold start. It is **never** a production classifier:
+`CHARCOAL_CLASSIFIER=local` is refused, because the web app must not depend on
+a Mac being switched on.
+
+```bash
+# one-time setup: gpu/cope-b-local/README.md
+POLICY_VERSION=policy-ddac468-2026-07-03 \
+  ~/.venvs/cope-b-mlx/bin/python gpu/cope-b-local/server.py \
+  --model ~/models/cope-b-a4b-mlx-8bit           # listens on 127.0.0.1:8765
+
+charcoal classify-gate --candidate local --reference runpod \
+  --sample tests/fixtures/cope_b/ab_sample.jsonl
+```
+
+The server speaks the RunPod wire format, so `local` reuses the RunPod client
+and its policy check (`CHARCOAL_COPE_B_POLICY_VERSION` must match the
+server's `POLICY_VERSION`). Override the address with
+`CHARCOAL_LOCAL_COPE_B_URL`. Local verdicts carry their own model id
+(`cope-b-a4b-mlx-8bit`), so they are never cached as production ones. On
+`ab_sample.jsonl` the 8-bit model agrees with production on 100/100 posts, at
+about 5 posts/s.
+
 ## PostgreSQL backend (optional)
 
 Charcoal uses SQLite by default. For server deployments you can switch to

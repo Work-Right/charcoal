@@ -1,9 +1,40 @@
-# CoPE-B on a Mac (spike #435)
+# CoPE-B on a Mac (spike #435, backend #437)
 
 Runs the CoPE-B-A4B classifier locally on Apple Silicon with
-[MLX](https://github.com/ml-explore/mlx-lm), and compares its verdicts with
-the production RunPod endpoint. This is spike tooling, not part of the app:
-nothing in `src/` calls it.
+[MLX](https://github.com/ml-explore/mlx-lm). Two ways to use it:
+
+- **`server.py`** (#437) serves the RunPod worker's wire format on loopback,
+  for Charcoal's `local` backend (`classify-gate`, `classify-compare`,
+  `eval-classifiers`). Never a production classifier.
+- **`classify_local.py`** (#435) is the standalone spike harness: classify a
+  fixture file, fetch RunPod reference verdicts, compare.
+
+Both run the same code in `engine.py`.
+
+## Server
+
+```
+POLICY_VERSION=policy-ddac468-2026-07-03 \
+  ~/.venvs/cope-b-mlx/bin/python gpu/cope-b-local/server.py --model ~/models/cope-b-a4b-mlx-8bit
+```
+
+- `POLICY_VERSION` is required, with no default. The policy text is read
+  from `gpu/cope-b-runpod/policy.txt`, and the label must describe it:
+  - a deployed label (`policy-<sha>-<YYYY-MM-DD>`, as the CoPE-B image build
+    makes them) is accepted only if `policy.txt` is byte-identical to that
+    file at commit `<sha>`; otherwise the server refuses to start
+  - to try an edited policy, use a `draft-…` label, which can never equal a
+    deployed version (set Charcoal's `CHARCOAL_COPE_B_POLICY_VERSION` to the
+    same label for the gate run)
+- Binds `127.0.0.1:8765` (`--port` to change; `--host` accepts only
+  `127.0.0.1` or `::1`). No auth.
+- `POST /runsync` with `{"input": {"contents": [...]}}` returns a COMPLETED
+  RunPod envelope; `GET /status/{id}` returns a recent one. One batch at a
+  time.
+- At startup it refuses to run if its prompt tokens differ from the
+  transformers rendering production uses.
+
+Tests (no model needed): `~/.venvs/cope-b-mlx/bin/python -m pytest gpu/cope-b-local/tests`
 
 Docker or OrbStack will not work: a Linux VM on a Mac cannot use the GPU,
 and vLLM needs a CUDA GPU. MLX runs natively on the Mac's GPU instead.
@@ -12,7 +43,7 @@ and vLLM needs a CUDA GPU. MLX runs natively on the Mac's GPU instead.
 
 ```
 python3 -m venv ~/.venvs/cope-b-mlx
-~/.venvs/cope-b-mlx/bin/pip install mlx-lm 'huggingface_hub[cli]'
+~/.venvs/cope-b-mlx/bin/pip install mlx-lm 'huggingface_hub[cli]' pytest hypothesis
 ~/.venvs/cope-b-mlx/bin/hf download zentropi-ai/cope-b-a4b --local-dir ~/models/cope-b-a4b   # ~47 GB
 ~/.venvs/cope-b-mlx/bin/mlx_lm.convert --hf-path ~/models/cope-b-a4b \
     --mlx-path ~/models/cope-b-a4b-mlx-8bit -q --q-bits 8                                   # ~25 GB

@@ -106,6 +106,12 @@ pub async fn run(
     b: Arc<dyn ToxicityClassifier>,
     input: &Path,
 ) -> Result<Summary> {
+    // Probe both backends' identity before classifying anything (#437). A
+    // batch on the wrong policy is only logged by the RunPod client and its
+    // verdicts still come back, so without this a server on a different
+    // policy (local or RunPod) would be scored as the deployed one. The web
+    // scan paths and eval-classifiers already probe first.
+    super::classify_gate::probe_both(&*a, &*b).await?;
     let body = std::fs::read_to_string(input).with_context(|| format!("read {input:?}"))?;
     let mut pairs = Vec::new();
     for (i, line) in body.lines().enumerate() {

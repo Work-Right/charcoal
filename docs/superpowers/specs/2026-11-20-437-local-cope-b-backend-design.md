@@ -78,10 +78,19 @@ string in every slot. A test pins both, so a local verdict can never be
 served from cache as a production one, or the reverse.
 
 **D5. Policy version is required, with no default.** The server refuses to
-start without `POLICY_VERSION` set, and reports it in every slot. The client's
-existing check then refuses a run whose expected version
-(`CHARCOAL_COPE_B_POLICY_VERSION`) differs, the same protection that exists
-since the #385 incident. This follows the project's no-silent-fallback rule.
+start without `POLICY_VERSION` set, and reports it in every slot. Two checks
+keep the label honest (both added during review of PR #173):
+
+- the server refuses a deployed-shaped label (`policy-<sha>-<date>`) unless
+  the loaded `policy.txt` is byte-identical to that file at `<sha>`; drafts
+  use a `draft-…` label;
+- the client does NOT refuse a mismatched batch: it only logs it, and the
+  verdicts still come back (#344 V3-01). So `classify-gate` and
+  `classify-compare` now run each backend's identity probe before
+  classifying, as the web scan paths and `eval-classifiers` already did.
+  An earlier draft of this spec wrongly said the client refuses.
+
+This follows the project's no-silent-fallback rule.
 
 **D6. Loopback only, no auth.** The server binds `127.0.0.1` and refuses any
 other bind address. `RunPodCopeBClient::new` requires a non-empty API key, so

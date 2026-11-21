@@ -33,14 +33,17 @@ pub fn record_request(backend: &str, latency_ms: u32, toxic: bool, retries: u32)
 /// "too few workers" (high delay) from "slow inference" (high execution).
 /// Emitted exactly once per terminal completion, from `parse_job`. Fields are
 /// `None` when RunPod omits them (e.g. on some non-terminal or legacy responses).
+/// `backend` is the client's `name()`: the local CoPE-B server (#437) uses
+/// the same client, and its timings must not count as production RunPod's.
 pub fn record_runpod_timing(
+    backend: &str,
     delay_time_ms: Option<u32>,
     execution_time_ms: Option<u32>,
     wall_clock_ms: u32,
 ) {
     info!(
         metric = "classifier_runpod_timing",
-        backend = "runpod-cope-b",
+        backend = backend,
         delay_time_ms = ?delay_time_ms,
         execution_time_ms = ?execution_time_ms,
         wall_clock_ms = wall_clock_ms,

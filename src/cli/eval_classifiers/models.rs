@@ -11,7 +11,10 @@ use crate::toxicity::detoxify_classifier::DetoxifyClassifier;
 use crate::toxicity::onnx::OnnxToxicityScorer;
 use crate::toxicity::runpod_cope_b::{RunPodCopeBClient, COPE_B_DEFAULT_POLICY, COPE_B_POLICY_ENV};
 
-pub const KNOWN_MODELS: &[&str] = &["cope-b", "detoxify"];
+/// #437: CoPE-B served locally on the Mac mini (gpu/cope-b-local/server.py).
+pub const LOCAL_EVAL_MODEL: &str = "local-cope-b";
+
+pub const KNOWN_MODELS: &[&str] = &["cope-b", "detoxify", LOCAL_EVAL_MODEL];
 
 /// The run's cap as the meter's ceiling. Never 0: a zero ceiling disables
 /// the backstop entirely.
@@ -62,6 +65,12 @@ pub fn build_eval_model(name: &str, cap_usd: f64) -> Result<Arc<dyn ToxicityClas
                 RunPodCopeBClient::new(endpoint, api_key)?.with_meter(meter),
             ))
         }
+        LOCAL_EVAL_MODEL => build_local_cope_b(
+            std::env::var(COPE_B_POLICY_ENV).ok().as_deref(),
+            std::env::var(crate::toxicity::runpod_cope_b::LOCAL_COPE_B_URL_ENV)
+                .ok()
+                .as_deref(),
+        ),
         "detoxify" => {
             let dir = crate::toxicity::download::resolve_model_dir();
             Ok(Arc::new(DetoxifyClassifier::new(OnnxToxicityScorer::load(
@@ -73,6 +82,19 @@ pub fn build_eval_model(name: &str, cap_usd: f64) -> Result<Arc<dyn ToxicityClas
             KNOWN_MODELS.join(", ")
         ),
     }
+}
+
+/// The local Mac mini model. Free, so no cost meter, but the same
+/// policy-version refusal as `cope-b`: the server reports its policy on every
+/// verdict, and scoring a server on the wrong policy would compare the wrong
+/// thing. Takes raw values so it is testable without process-global env.
+fn build_local_cope_b(
+    policy_raw: Option<&str>,
+    url_raw: Option<&str>,
+) -> Result<Arc<dyn ToxicityClassifier>> {
+    require_cope_b_policy(policy_raw)?;
+    let url = crate::toxicity::runpod_cope_b::local_cope_b_url(url_raw);
+    Ok(Arc::new(RunPodCopeBClient::local(url)?))
 }
 
 #[cfg(test)]
@@ -97,6 +119,41 @@ mod tests {
             );
         }
         assert!(require_cope_b_policy(Some("policy-ddac468-2026-07-03")).is_ok());
+    }
+
+    /// #437: the local Mac mini model is evaluable, priced (free), and keeps
+    /// the policy refusal: a server on the wrong policy must not be scored.
+    #[test]
+    fn local_cope_b_is_known_priced_and_policy_checked() {
+        assert!(KNOWN_MODELS.contains(&LOCAL_EVAL_MODEL));
+        let prices = crate::cli::eval_classifiers::cost::load_pricing(
+            &std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("evals/classifiers/pricing.json"),
+        )
+        .expect("pricing.json loads");
+        let price = crate::cli::eval_classifiers::cost::price_for(&prices, LOCAL_EVAL_MODEL)
+            .expect("local model is priced");
+        assert_eq!(
+            crate::cli::eval_classifiers::cost::estimate_usd(price, 1_000),
+            0.0
+        );
+
+        let Err(err) = build_local_cope_b(None, None) else {
+            panic!("an unset policy version must be refused");
+        };
+        assert!(format!("{err:#}").contains("CHARCOAL_COPE_B_POLICY_VERSION"));
+
+        let model = build_local_cope_b(Some("policy-ddac468-2026-07-03"), None)
+            .expect("builds with a policy and the default URL");
+        // Requirement (spec D4): local verdicts carry the local identity.
+        assert_eq!(
+            model.name(),
+            crate::toxicity::runpod_cope_b::LOCAL_COPE_B_NAME
+        );
+        assert_eq!(
+            model.model_id(),
+            crate::toxicity::runpod_cope_b::LOCAL_COPE_B_MODEL_ID
+        );
     }
 
     #[test]

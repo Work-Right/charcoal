@@ -672,3 +672,156 @@ mod retry {
         // .expect(0) on drop verifies no HTTP request was issued.
     }
 }
+
+/// #437: the `local` backend, CoPE-B served from the Mac mini by
+/// gpu/cope-b-local/server.py in the RunPod wire format.
+mod local_backend {
+    use charcoal::toxicity::classifier::{build_backend_named, build_from_env, ToxicityClassifier};
+    use charcoal::toxicity::runpod_cope_b::{
+        RunPodCopeBClient, LOCAL_COPE_B_MODEL_ID, LOCAL_COPE_B_NAME, LOCAL_COPE_B_URL_ENV,
+    };
+    use serial_test::serial;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    /// Save + restore one env var, so a test never leaks into the next.
+    struct VarGuard(&'static str, Option<String>);
+    impl VarGuard {
+        fn set(name: &'static str, value: Option<&str>) -> Self {
+            let prior = std::env::var(name).ok();
+            match value {
+                Some(v) => std::env::set_var(name, v),
+                None => std::env::remove_var(name),
+            }
+            Self(name, prior)
+        }
+    }
+    impl Drop for VarGuard {
+        fn drop(&mut self) {
+            match &self.1 {
+                Some(v) => std::env::set_var(self.0, v),
+                None => std::env::remove_var(self.0),
+            }
+        }
+    }
+
+    #[test]
+    fn local_client_has_its_own_identity() {
+        // Requirement (spec D4): the verdict cache is keyed by model_id, so a
+        // local verdict must never be stored or served as a production one.
+        let c = RunPodCopeBClient::local("http://127.0.0.1:8765".into()).unwrap();
+        assert_eq!(c.name(), LOCAL_COPE_B_NAME);
+        assert_eq!(c.model_id(), LOCAL_COPE_B_MODEL_ID);
+        assert_eq!(LOCAL_COPE_B_NAME, "local-cope-b");
+        assert_eq!(LOCAL_COPE_B_MODEL_ID, "cope-b-a4b-mlx-8bit");
+    }
+
+    #[test]
+    fn production_client_identity_is_unchanged() {
+        // Requirement: adding the local identity must not leak into the
+        // production client, whose cached verdicts are keyed by these names.
+        let c = RunPodCopeBClient::new("https://example.invalid".into(), "k".into()).unwrap();
+        assert_eq!(c.name(), "runpod-cope-b");
+        assert_eq!(c.model_id(), "cope-b-a4b");
+    }
+
+    #[test]
+    #[serial(charcoal_classifier_env)]
+    fn charcoal_classifier_cannot_select_local() {
+        // Requirement (spec D2): production picks its classifier through
+        // CHARCOAL_CLASSIFIER; it must never be able to pick a backend that
+        // depends on the Mac mini being on.
+        let _g = VarGuard::set("CHARCOAL_CLASSIFIER", Some("local"));
+        let Err(err) = build_from_env() else {
+            panic!("CHARCOAL_CLASSIFIER=local must be rejected");
+        };
+        assert!(format!("{err}").contains("developer tools"), "{err}");
+    }
+
+    #[tokio::test]
+    #[serial(charcoal_classifier_env)]
+    async fn build_backend_named_local_classifies_against_the_configured_url() {
+        // Requirement (spec D3, D6): `local` needs no API key, reads its URL
+        // from CHARCOAL_LOCAL_COPE_B_URL, and round-trips the RunPod envelope
+        // the local server returns (status COMPLETED, timing fields).
+        let server = MockServer::start().await;
+        let policy = charcoal::toxicity::runpod_cope_b::cope_b_expected_policy();
+        let body = format!(
+            r#"{{"id":"j1","status":"COMPLETED","delayTime":0,"executionTime":12,
+                "output":{{"verdicts":[{{"ok":true,"toxic":true,"confidence":0.97,
+                "model":"cope-b-a4b-mlx-8bit","policy_version":"{policy}"}}]}}}}"#
+        );
+        Mock::given(method("POST"))
+            .and(path("/runsync"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+            .mount(&server)
+            .await;
+        let _u = VarGuard::set(LOCAL_COPE_B_URL_ENV, Some(&server.uri()));
+        let _k = VarGuard::set("RUNPOD_API_KEY", None);
+
+        let backend = build_backend_named("local").expect("local builds without an API key");
+        assert_eq!(backend.name(), LOCAL_COPE_B_NAME);
+
+        // Capture this thread's metric events while classifying (pattern from
+        // tests/unit_actions_runner.rs: pin the callsite cache with a bare
+        // global registry, then scope a capturing layer to this thread).
+        let _ = tracing_subscriber::registry().try_init();
+        let seen = MetricBackends::default();
+        let subscriber = tracing_subscriber::registry().with(seen.clone());
+        let guard = tracing::subscriber::set_default(subscriber);
+        let v = backend.classify("hello").await.expect("classifies");
+        drop(guard);
+
+        assert!(v.toxic_token);
+        assert!((v.confidence - 0.97).abs() < 1e-6);
+        // Requirement (spec D4, extended): every metric a local request emits
+        // is labelled local-cope-b, so local timings never pollute the
+        // production RunPod latency and queue-wait figures.
+        let seen = seen.0.lock().unwrap().clone();
+        let timing: Vec<_> = seen
+            .iter()
+            .filter(|(m, _)| m == "classifier_runpod_timing")
+            .collect();
+        assert_eq!(timing.len(), 1, "{seen:?}");
+        assert!(
+            seen.iter().all(|(_, b)| b == LOCAL_COPE_B_NAME),
+            "a metric was labelled with another backend: {seen:?}"
+        );
+    }
+
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+
+    /// (metric, backend) for every event that carries both fields.
+    #[derive(Clone, Default)]
+    struct MetricBackends(std::sync::Arc<std::sync::Mutex<Vec<(String, String)>>>);
+
+    impl<S: tracing::Subscriber> tracing_subscriber::Layer<S> for MetricBackends {
+        fn on_event(
+            &self,
+            event: &tracing::Event<'_>,
+            _ctx: tracing_subscriber::layer::Context<'_, S>,
+        ) {
+            #[derive(Default)]
+            struct Fields {
+                metric: Option<String>,
+                backend: Option<String>,
+            }
+            impl tracing::field::Visit for Fields {
+                fn record_str(&mut self, f: &tracing::field::Field, v: &str) {
+                    match f.name() {
+                        "metric" => self.metric = Some(v.to_string()),
+                        "backend" => self.backend = Some(v.to_string()),
+                        _ => {}
+                    }
+                }
+                fn record_debug(&mut self, _: &tracing::field::Field, _: &dyn std::fmt::Debug) {}
+            }
+            let mut f = Fields::default();
+            event.record(&mut f);
+            if let (Some(m), Some(b)) = (f.metric, f.backend) {
+                self.0.lock().unwrap().push((m, b));
+            }
+        }
+    }
+}

@@ -7,6 +7,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- #437 — a `local` CoPE-B backend for the developer tools (`classify-gate`,
+  `classify-compare`, `eval-classifiers` as `local-cope-b`). CoPE-B runs on
+  the Mac mini through MLX (`gpu/cope-b-local/server.py`), serving the RunPod
+  wire format on loopback, so the RunPod client is reused with its retries
+  and policy check. The 8-bit model agrees with the production endpoint on
+  100/100 posts of the A/B sample at about 5 posts/s, with no cold start and
+  no GPU bill. It cannot become the production classifier
+  (`CHARCOAL_CLASSIFIER=local` is refused), and its verdicts carry their own
+  model id so they never share cache rows with production. Spike #435 found
+  two silent traps, both now guarded: mlx-lm turns Gemma 4's thinking mode
+  on by default (with it on, the model missed anti-trans and anti-Pride
+  replies production flags), and trimming the KV cache corrupts the policy
+  prefix because Gemma 4's sliding window is shorter than it.
 - #424 — `charcoal estimate <handle>...` measures what a full scan would cost
   without paying for it. It runs the production scan body against a
   throwaway database with a stand-in Stage-2 classifier that pauses the burst

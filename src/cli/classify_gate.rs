@@ -101,6 +101,12 @@ pub async fn run(
     sample_path: &Path,
     disagreements_path: &Path,
 ) -> Result<GateOutcome> {
+    // Probe both backends' identity before classifying anything (#437). A
+    // batch on the wrong policy is only logged by the RunPod client and its
+    // verdicts still come back, so without this a server on a different
+    // policy (local or RunPod) would be scored as the deployed one. The web
+    // scan paths and eval-classifiers already probe first.
+    probe_both(&*candidate, &*reference).await?;
     let rows = classify_pairs(&*candidate, &*reference, sample_path).await?;
     let inputs = GateInputs {
         candidate_name: candidate.name().into(),
@@ -158,4 +164,20 @@ async fn classify_pairs(
         });
     }
     Ok(rows)
+}
+
+/// Run both backends' identity probes, naming the one that fails.
+pub(crate) async fn probe_both(
+    a: &dyn ToxicityClassifier,
+    b: &dyn ToxicityClassifier,
+) -> Result<()> {
+    for backend in [a, b] {
+        backend.probe_identity().await.with_context(|| {
+            format!(
+                "{} identity probe failed; nothing was classified",
+                backend.name()
+            )
+        })?;
+    }
+    Ok(())
 }

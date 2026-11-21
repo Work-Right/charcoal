@@ -93,6 +93,10 @@ pub struct RunPodCopeBClient {
     steady_timeout: Duration,
     warmup_timeout: Duration,
     max_retries: u32,
+    /// Reported by `ToxicityClassifier::name` / `model_id`. Production
+    /// values from `new`; `local` swaps in the local identity (#437).
+    name: &'static str,
+    model_id: &'static str,
     /// Per-scan cost backstop. Default (from `new`) is disabled; `build_from_env`
     /// attaches an env-configured meter per scan.
     meter: Arc<ScanCostMeter>,
@@ -165,6 +169,32 @@ fn default_policy_version() -> String {
 
 /// What this deployment expects the CoPE-B endpoint to be serving.
 pub const COPE_B_POLICY_ENV: &str = "CHARCOAL_COPE_B_POLICY_VERSION";
+
+// #437: CoPE-B served locally on the Mac mini by gpu/cope-b-local/server.py,
+// which speaks this client's wire format. Developer tools only: it is built
+// by `build_backend_named("local")`, never through CHARCOAL_CLASSIFIER.
+
+/// Backend name of the local client, distinct from production's
+/// `runpod-cope-b` so metrics and gate reports can tell them apart.
+pub const LOCAL_COPE_B_NAME: &str = "local-cope-b";
+/// Model id of the local client. The verdict cache is keyed by model id, so
+/// this must differ from production's `cope-b-a4b`: an 8-bit MLX verdict
+/// must never be served from cache as a production one, or the reverse.
+pub const LOCAL_COPE_B_MODEL_ID: &str = "cope-b-a4b-mlx-8bit";
+/// Where the local server listens unless told otherwise.
+pub const LOCAL_COPE_B_URL_ENV: &str = "CHARCOAL_LOCAL_COPE_B_URL";
+pub const LOCAL_COPE_B_DEFAULT_URL: &str = "http://127.0.0.1:8765";
+/// The local server ignores auth, but `new` requires a non-empty key.
+const LOCAL_COPE_B_PLACEHOLDER_KEY: &str = "local";
+
+/// The local server URL: the env value if it is set and non-blank (trimmed),
+/// otherwise the loopback default.
+pub fn local_cope_b_url(raw: Option<&str>) -> String {
+    match raw.map(str::trim) {
+        Some(v) if !v.is_empty() => v.to_string(),
+        _ => LOCAL_COPE_B_DEFAULT_URL.to_string(),
+    }
+}
 /// The value used when the knob is unset — unchanged from what this
 /// classifier advertised before #344, so an unconfigured deployment behaves
 /// exactly as it did.
@@ -309,11 +339,23 @@ impl RunPodCopeBClient {
             steady_timeout: Duration::from_millis(steady_ms),
             warmup_timeout: Duration::from_millis(warmup_ms),
             max_retries,
+            name: "runpod-cope-b",
+            model_id: "cope-b-a4b",
             meter: Arc::new(ScanCostMeter::new(
                 0,
                 super::cost_meter::DEFAULT_RATE_CENTS_PER_HOUR,
             )),
         })
+    }
+
+    /// A client for the local CoPE-B server (#437). Same wire format, retries
+    /// and policy check as production, but its own name and model id, no API
+    /// key, and the default disabled cost meter (local runs are free).
+    pub fn local(endpoint_url: String) -> Result<Self> {
+        let mut client = Self::new(endpoint_url, LOCAL_COPE_B_PLACEHOLDER_KEY.into())?;
+        client.name = LOCAL_COPE_B_NAME;
+        client.model_id = LOCAL_COPE_B_MODEL_ID;
+        Ok(client)
     }
 
     /// Override the steady and warm-up request deadlines. Exists so the poll
@@ -396,7 +438,8 @@ impl RunPodCopeBClient {
 
     /// Interpret one job-envelope response as either a terminal batch of
     /// outcomes or a pending signal (poll `/status`).
-    fn parse_batch_job(raw: &str, latency_ms: u32) -> Result<BatchJobOutcome> {
+    /// `backend` labels the timing metric (the client's `name()`).
+    fn parse_batch_job(raw: &str, latency_ms: u32, backend: &str) -> Result<BatchJobOutcome> {
         let env: JobEnvelope = serde_json::from_str(raw)
             .with_context(|| format!("parse RunPod response body: {raw}"))?;
         let status = env.status.as_deref().unwrap_or("").to_ascii_uppercase();
@@ -414,6 +457,7 @@ impl RunPodCopeBClient {
 
         if let Some(out) = env.output {
             crate::observability::classifier_metrics::record_runpod_timing(
+                backend,
                 delay_time_ms,
                 execution_time_ms,
                 latency_ms,
@@ -433,8 +477,14 @@ impl RunPodCopeBClient {
     }
 
     /// Test/entry helper: parse a terminal batch response into outcomes.
+    ///
+    /// Only the fuzz target and tests call this; no client request goes
+    /// through it. `classify_batch` (`/runsync`) and `poll_status`
+    /// (`/status`) call `parse_batch_job` with the client's own `name()`, so
+    /// the fixed `runpod-cope-b` timing label here never applies to the local
+    /// backend (#437).
     pub fn parse_batch_response(raw: &str, latency_ms: u32) -> Result<Vec<ItemOutcome>> {
-        match Self::parse_batch_job(raw, latency_ms)? {
+        match Self::parse_batch_job(raw, latency_ms, "runpod-cope-b")? {
             BatchJobOutcome::Completed(v) => Ok(v),
             BatchJobOutcome::Pending(id) => {
                 bail!("RunPod job {id} not terminal in the /runsync response (still pending)")
@@ -510,7 +560,7 @@ impl RunPodCopeBClient {
                 }
             };
             let latency_ms: u32 = start.elapsed().as_millis().try_into().unwrap_or(u32::MAX);
-            match Self::parse_batch_job(&body, latency_ms)? {
+            match Self::parse_batch_job(&body, latency_ms, self.name)? {
                 BatchJobOutcome::Completed(v) => return Ok(v),
                 BatchJobOutcome::Pending(_) => continue,
             }
@@ -625,7 +675,7 @@ impl RunPodCopeBClient {
         let observed = retries.get();
         // /runsync may return before the job finishes (cold starts exceed its
         // ~90s wait) — in that case poll /status until terminal.
-        let verdicts = match Self::parse_batch_job(&response, latency_ms)? {
+        let verdicts = match Self::parse_batch_job(&response, latency_ms, self.name)? {
             BatchJobOutcome::Completed(v) => v,
             BatchJobOutcome::Pending(id) => {
                 // The job is still executing server-side on a worker — that IS
@@ -693,10 +743,10 @@ impl ToxicityClassifier for RunPodCopeBClient {
     }
 
     fn name(&self) -> &'static str {
-        "runpod-cope-b"
+        self.name
     }
     fn model_id(&self) -> &'static str {
-        "cope-b-a4b"
+        self.model_id
     }
     fn policy_version(&self) -> &'static str {
         // What this deployment declares the endpoint is serving (#344 V3-01).
@@ -765,6 +815,25 @@ fn check_probe_policy(outcomes: &[ItemOutcome]) -> Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod local_url_props {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        // Invariant: a non-blank value is used trimmed; a missing or blank
+        // value falls back to the loopback default. Never returns "".
+        #[test]
+        fn local_url_is_trimmed_value_or_default(raw in proptest::option::of(".{0,40}")) {
+            let url = local_cope_b_url(raw.as_deref());
+            match raw.as_deref().map(str::trim) {
+                Some(v) if !v.is_empty() => prop_assert_eq!(url, v),
+                _ => prop_assert_eq!(url, LOCAL_COPE_B_DEFAULT_URL),
+            }
+        }
+    }
 }
 
 #[cfg(test)]

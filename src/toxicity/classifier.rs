@@ -193,6 +193,13 @@ pub fn build_from_env_with_meter(
         })?;
 
     match kind.as_str() {
+        // #437 spec D2: the local backend needs the Mac mini to be on, so the
+        // deployment's classifier can never be it. Only the gate, compare and
+        // eval tools build it, by name.
+        "local" => Err(anyhow::anyhow!(
+            "CHARCOAL_CLASSIFIER=local is not allowed: the local backend is for developer \
+             tools only (classify-gate, classify-compare, eval-classifiers)"
+        )),
         "runpod" => {
             let endpoint = std::env::var("RUNPOD_ENDPOINT_URL")
                 .context("RUNPOD_ENDPOINT_URL must be set for CHARCOAL_CLASSIFIER=runpod")?;
@@ -249,7 +256,17 @@ pub fn build_backend_named(name: &str) -> Result<Arc<dyn ToxicityClassifier>> {
             )?;
             Ok(Arc::new(client))
         }
-        other => anyhow::bail!("unknown backend: {other:?} (expected runpod | zentropi)"),
+        "local" => {
+            // #437: the Mac mini server. No API key, no cost meter (free).
+            let url = crate::toxicity::runpod_cope_b::local_cope_b_url(
+                std::env::var(crate::toxicity::runpod_cope_b::LOCAL_COPE_B_URL_ENV)
+                    .ok()
+                    .as_deref(),
+            );
+            let client = crate::toxicity::runpod_cope_b::RunPodCopeBClient::local(url)?;
+            Ok(Arc::new(client))
+        }
+        other => anyhow::bail!("unknown backend: {other:?} (expected runpod | zentropi | local)"),
     }
 }
 

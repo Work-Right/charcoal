@@ -14174,9 +14174,9 @@
       "node_type": "goal",
       "title": "#437: groundwork for a local (Mac/MLX) CoPE-B backend; RunPod stays production",
       "description": null,
-      "status": "pending",
+      "status": "completed",
       "created_at": "2026-11-20T21:20:41.134842-08:00",
-      "updated_at": "2026-11-20T21:20:41.134842-08:00",
+      "updated_at": "2026-11-20T22:14:37.678747-08:00",
       "metadata_json": "{\"branch\":\"sesh/run-zentropi-model-on-mac-mini\",\"confidence\":80,\"prompt\":\"Runpod does seem the best for now but we should have the stuff in place to do 437\"}"
     },
     {
@@ -14200,6 +14200,72 @@
       "created_at": "2026-11-20T21:22:43.909506-08:00",
       "updated_at": "2026-11-20T21:22:43.909506-08:00",
       "metadata_json": "{\"branch\":\"sesh/run-zentropi-model-on-mac-mini\",\"confidence\":90}"
+    },
+    {
+      "id": 1301,
+      "change_id": "f610b2f4-2b1e-4634-966b-c32e529bed9e",
+      "node_type": "outcome",
+      "title": "PR #171 ready: CI (both jobs), PR-Agent (5/5 findings resolved), Semgrep green on 5d52f0e; mergeable clean",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-11-20T22:10:57.484744-08:00",
+      "updated_at": "2026-11-20T22:10:57.484744-08:00",
+      "metadata_json": "{\"branch\":\"sesh/run-zentropi-model-on-mac-mini\",\"commit\":\"5d52f0e\",\"confidence\":95}"
+    },
+    {
+      "id": 1302,
+      "change_id": "144e2282-f0b5-4271-a270-b6016e4ef059",
+      "node_type": "outcome",
+      "title": "PR #171 merged to staging (f86f2f6): spike tooling + #437 spec/plan",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-11-20T22:14:37.657916-08:00",
+      "updated_at": "2026-11-20T22:14:37.657916-08:00",
+      "metadata_json": "{\"branch\":\"sesh/run-zentropi-model-on-mac-mini\",\"confidence\":95}"
+    },
+    {
+      "id": 1303,
+      "change_id": "65244c50-977c-4de1-a658-a42e5fc76659",
+      "node_type": "action",
+      "title": "Implement #437 Task 1-2: Python loopback server (RunPod wire format, startup guards)",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-11-20T22:16:13.850674-08:00",
+      "updated_at": "2026-11-20T22:16:13.850674-08:00",
+      "metadata_json": "{\"branch\":\"feat/437-local-cope-b\",\"commit\":\"f86f2f6\",\"confidence\":80,\"files\":[\"gpu/cope-b-local/server.py\",\"gpu/cope-b-local/tests/\"]}"
+    },
+    {
+      "id": 1304,
+      "change_id": "afc2518e-3427-487b-adea-0714c8ab70f3",
+      "node_type": "outcome",
+      "title": "Tasks 1-2 done: engine.py + server.py, 16 property/HTTP tests, 8/8 mutants killed, live 100/100 via engine; server refuses no-policy + non-loopback",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-11-20T22:25:15.660293-08:00",
+      "updated_at": "2026-11-20T22:25:15.660293-08:00",
+      "metadata_json": "{\"branch\":\"feat/437-local-cope-b\",\"commit\":\"1c35a06\",\"confidence\":90}"
+    },
+    {
+      "id": 1305,
+      "change_id": "77ae1783-cf78-4cbe-9145-d95f898fdc4c",
+      "node_type": "action",
+      "title": "Implement #437 Tasks 3-5: Rust local identity, backend selection, eval arm",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-11-20T22:25:21.820993-08:00",
+      "updated_at": "2026-11-20T22:25:21.820993-08:00",
+      "metadata_json": "{\"branch\":\"feat/437-local-cope-b\",\"commit\":\"1c35a06\",\"confidence\":80,\"files\":[\"src/toxicity/runpod_cope_b.rs\",\"src/toxicity/classifier.rs\",\"src/cli/eval_classifiers/models.rs\"]}"
+    },
+    {
+      "id": 1306,
+      "change_id": "6642dbbd-eba4-49b3-834c-2638f2e5f2e6",
+      "node_type": "outcome",
+      "title": "Tasks 3-6 done: local backend + eval arm + metric label fix; gate local vs runpod PASS 100/100; mutants 9/9 + 4/4 hand; PR #173 opened",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-11-20T22:49:20.318034-08:00",
+      "updated_at": "2026-11-20T22:49:20.318034-08:00",
+      "metadata_json": "{\"branch\":\"feat/437-local-cope-b\",\"commit\":\"3472ac4\",\"confidence\":90}"
     }
   ],
   "edges": [
@@ -28953,6 +29019,72 @@
       "weight": 1.0,
       "rationale": "groundwork",
       "created_at": "2026-11-20T21:22:46.962530-08:00"
+    },
+    {
+      "id": 1352,
+      "from_node_id": 1299,
+      "to_node_id": 1301,
+      "from_change_id": "46f0a0b4-a75f-4eb8-ac66-70e924dddcb2",
+      "to_change_id": "f610b2f4-2b1e-4634-966b-c32e529bed9e",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "PR result",
+      "created_at": "2026-11-20T22:10:57.501047-08:00"
+    },
+    {
+      "id": 1353,
+      "from_node_id": 1301,
+      "to_node_id": 1302,
+      "from_change_id": "f610b2f4-2b1e-4634-966b-c32e529bed9e",
+      "to_change_id": "144e2282-f0b5-4271-a270-b6016e4ef059",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "merged",
+      "created_at": "2026-11-20T22:14:37.673595-08:00"
+    },
+    {
+      "id": 1354,
+      "from_node_id": 1300,
+      "to_node_id": 1303,
+      "from_change_id": "0e79314e-fc32-4dd3-887e-69eed1f6a04a",
+      "to_change_id": "65244c50-977c-4de1-a658-a42e5fc76659",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Bryan: kick off 437",
+      "created_at": "2026-11-20T22:16:13.866592-08:00"
+    },
+    {
+      "id": 1355,
+      "from_node_id": 1303,
+      "to_node_id": 1304,
+      "from_change_id": "65244c50-977c-4de1-a658-a42e5fc76659",
+      "to_change_id": "afc2518e-3427-487b-adea-0714c8ab70f3",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "result",
+      "created_at": "2026-11-20T22:25:15.675210-08:00"
+    },
+    {
+      "id": 1356,
+      "from_node_id": 1300,
+      "to_node_id": 1305,
+      "from_change_id": "0e79314e-fc32-4dd3-887e-69eed1f6a04a",
+      "to_change_id": "77ae1783-cf78-4cbe-9145-d95f898fdc4c",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Rust half",
+      "created_at": "2026-11-20T22:25:21.836419-08:00"
+    },
+    {
+      "id": 1357,
+      "from_node_id": 1305,
+      "to_node_id": 1306,
+      "from_change_id": "77ae1783-cf78-4cbe-9145-d95f898fdc4c",
+      "to_change_id": "6642dbbd-eba4-49b3-834c-2638f2e5f2e6",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "result",
+      "created_at": "2026-11-20T22:49:20.336213-08:00"
     }
   ],
   "documents": [
