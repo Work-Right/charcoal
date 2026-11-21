@@ -14233,6 +14233,28 @@
       "created_at": "2026-11-20T22:16:13.850674-08:00",
       "updated_at": "2026-11-20T22:16:13.850674-08:00",
       "metadata_json": "{\"branch\":\"feat/437-local-cope-b\",\"commit\":\"f86f2f6\",\"confidence\":80,\"files\":[\"gpu/cope-b-local/server.py\",\"gpu/cope-b-local/tests/\"]}"
+    },
+    {
+      "id": 1304,
+      "change_id": "afc2518e-3427-487b-adea-0714c8ab70f3",
+      "node_type": "outcome",
+      "title": "Tasks 1-2 done: engine.py + server.py, 16 property/HTTP tests, 8/8 mutants killed, live 100/100 via engine; server refuses no-policy + non-loopback",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-11-20T22:25:15.660293-08:00",
+      "updated_at": "2026-11-20T22:25:15.660293-08:00",
+      "metadata_json": "{\"branch\":\"feat/437-local-cope-b\",\"commit\":\"1c35a06\",\"confidence\":90}"
+    },
+    {
+      "id": 1305,
+      "change_id": "77ae1783-cf78-4cbe-9145-d95f898fdc4c",
+      "node_type": "action",
+      "title": "Implement #437 Tasks 3-5: Rust local identity, backend selection, eval arm",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-11-20T22:25:21.820993-08:00",
+      "updated_at": "2026-11-20T22:25:21.820993-08:00",
+      "metadata_json": "{\"branch\":\"feat/437-local-cope-b\",\"commit\":\"1c35a06\",\"confidence\":80,\"files\":[\"src/toxicity/runpod_cope_b.rs\",\"src/toxicity/classifier.rs\",\"src/cli/eval_classifiers/models.rs\"]}"
     }
   ],
   "edges": [
@@ -29019,6 +29041,28 @@
       "weight": 1.0,
       "rationale": "Bryan: kick off 437",
       "created_at": "2026-11-20T22:16:13.866592-08:00"
+    },
+    {
+      "id": 1355,
+      "from_node_id": 1303,
+      "to_node_id": 1304,
+      "from_change_id": "65244c50-977c-4de1-a658-a42e5fc76659",
+      "to_change_id": "afc2518e-3427-487b-adea-0714c8ab70f3",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "result",
+      "created_at": "2026-11-20T22:25:15.675210-08:00"
+    },
+    {
+      "id": 1356,
+      "from_node_id": 1300,
+      "to_node_id": 1305,
+      "from_change_id": "0e79314e-fc32-4dd3-887e-69eed1f6a04a",
+      "to_change_id": "77ae1783-cf78-4cbe-9145-d95f898fdc4c",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Rust half",
+      "created_at": "2026-11-20T22:25:21.836419-08:00"
     }
   ],
   "documents": [

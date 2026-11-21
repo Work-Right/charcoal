@@ -1,4 +1,5 @@
 {
   "cope-b": { "usd_per_post": 0.00013 },
-  "detoxify": { "usd_per_post": 0.0 }
+  "detoxify": { "usd_per_post": 0.0 },
+  "local-cope-b": { "usd_per_post": 0.0 }
 }

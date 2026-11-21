@@ -1,5 +1,13 @@
 [
   {
+    "hash": "1c35a06f325271ed78d627800982e29490af5437",
+    "short_hash": "1c35a06",
+    "author": "Bryan Guffey",
+    "date": "2026-11-20T22:25:01-08:00",
+    "message": "feat(437): local CoPE-B server speaking the RunPod wire format\n\nengine.py holds the classification logic behind a small backend\ninterface (MlxBackend for real runs, a fake in tests): thinking mode\noff plus a transformers token-parity guard, and the policy prefix\nreused by snapshot/restore, never trim. server.py serves POST /runsync\nand GET /status/{id} in the RunPod envelope on loopback only, refuses\nto start without POLICY_VERSION, and isolates a failing post to its\nown ok:false slot. classify_local.py local now runs through the same\nengine.\n\nTests: Hypothesis properties (verdict independent of earlier posts,\nprefix reuse == full prompt, slot shape, batch alignment, loopback-only)\nplus HTTP round-trips; 8 deliberate breaks all caught. Live: 100/100 vs\nthe RunPod reference through the new engine, 4.7 cls/s.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "files_changed": 8
+  },
+  {
     "hash": "f86f2f67b6d9076382c68e8c493d24be7e587f38",
     "short_hash": "f86f2f6",
     "author": "Bryan Guffey",
