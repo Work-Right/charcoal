@@ -1,5 +1,45 @@
 [
   {
+    "hash": "b78602d138009a9477ed2e1cd2b4d329490ec979",
+    "short_hash": "b78602d",
+    "author": "Bryan Guffey",
+    "date": "2026-11-20T21:22:05-08:00",
+    "message": "docs(437): spec and TDD plan for a local CoPE-B backend\n\nGroundwork only; RunPod stays the production classifier. The local\nbackend serves the RunPod wire format from a loopback Python/MLX\nserver, is buildable only by name for gate/compare/eval tooling (never\nvia CHARCOAL_CLASSIFIER), and carries its own model_id so its verdicts\nnever share cache rows with production.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "files_changed": 4
+  },
+  {
+    "hash": "e46e71d8b63d8927d4186c7dbd4a209d3e76ee1b",
+    "short_hash": "e46e71d",
+    "author": "Bryan Guffey",
+    "date": "2026-11-20T20:39:20-08:00",
+    "message": "fix(435): disable mlx-lm thinking mode; local CoPE-B matches prod 100/100\n\nmlx-lm enables thinking mode by default, which injects a <|think|>\nsystem turn that production (transformers via vLLM) never sends. That,\nnot MLX maths, caused the 3 missed identity-hostility posts. With\nenable_thinking=False the prompt tokens match transformers exactly and\nthe 8-bit model agrees with the RunPod endpoint on 100/100.\n\nAdds a guard that exits if the MLX prompt tokens differ from the\ntransformers rendering (verified by re-enabling thinking), and the\ndiff_layers.py tool that found it.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "files_changed": 5
+  },
+  {
+    "hash": "a7ce874d30572cb6de5411738114b941974e24b5",
+    "short_hash": "a7ce874",
+    "author": "Bryan Guffey",
+    "date": "2026-11-20T18:56:25-08:00",
+    "message": "feat(435): HF reference tiebreaker shows MLX Gemma 4 diverges\n\ntransformers on CPU matches production vLLM on all 7 rows; MLX misses\n3 identity-hostility posts at both 8-bit and bf16, so the gap is the\nMLX gemma4_text implementation, not quantization.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "files_changed": 4
+  },
+  {
+    "hash": "ee86f42770e84e1cfdd6e99b6363b65e15191d36",
+    "short_hash": "ee86f42",
+    "author": "Bryan Guffey",
+    "date": "2026-11-20T18:36:57-08:00",
+    "message": "feat(435): run CoPE-B locally on Apple Silicon with MLX\n\nSpike harness: classify the A/B sample with an 8-bit MLX conversion,\nfetch reference verdicts from the RunPod endpoint, and compare with the\nclassify-gate bar. Reuses the policy prefix via cache snapshot/restore,\nbecause Gemma 4 sliding-window layers make trimming a wrapped cache\ncorrupt the prefix.\n\nMeasured: 5.1 classifications/s, 27.8 GB peak, identical labels with\nand without the prefix cache.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "files_changed": 4
+  },
+  {
+    "hash": "e6a721474b918638152f76b0fc710a68812a5437",
+    "short_hash": "e6a7214",
+    "author": "Bryan Guffey",
+    "date": "2026-11-13T20:01:45-08:00",
+    "message": "chore: re-sync from project-template ddf8715\n\nBrings in #72 (work-check round 2: arithmetic << is not a heredoc,\n./ and :/ paths hit the core blocks, --show-scope is a write, HOME= before\ngit counts as hooks-off, a merge needs pre-merge-commit installed, cloud\nsessions cannot commit or push on/to main) and #73 (backup scripts round\n2: one SQLite snapshot per backup, upload before writing a lower row\ncount, link-shared-dbs skips an already-shared folder, restore-dbs\nrefuses a DB with -wal/-shm beside it without --force).\n\ninstall-hooks.sh is the template version with charcoal's #367\naffected-tests pre-push gate re-ported under the .hookenv loader,\nunchanged. .gitattributes and .sesh/config.json keep charcoal's.\n\nRefs #434\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "files_changed": 6
+  },
+  {
     "hash": "69260e461813e1ee4ec4ea7987df42d1a4cf304b",
     "short_hash": "69260e4",
     "author": "Bryan Guffey",
