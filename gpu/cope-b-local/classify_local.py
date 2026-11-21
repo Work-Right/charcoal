@@ -85,6 +85,8 @@ def cmd_local(args) -> None:
     rows = read_rows(Path(args.sample))
     if args.limit:
         rows = rows[: args.limit]
+    if not rows:
+        sys.exit(f"no rows in {args.sample}")
 
     t0 = time.perf_counter()
     model, tokenizer = load(args.model)
