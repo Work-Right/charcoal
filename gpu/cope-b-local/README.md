@@ -18,9 +18,14 @@ POLICY_VERSION=policy-ddac468-2026-07-03 \
   ~/.venvs/cope-b-mlx/bin/python gpu/cope-b-local/server.py --model ~/models/cope-b-a4b-mlx-8bit
 ```
 
-- `POLICY_VERSION` is required, with no default: it must equal the deployed
-  policy, the same value Charcoal's `CHARCOAL_COPE_B_POLICY_VERSION` holds.
-  The policy text is read from `gpu/cope-b-runpod/policy.txt`.
+- `POLICY_VERSION` is required, with no default. The policy text is read
+  from `gpu/cope-b-runpod/policy.txt`, and the label must describe it:
+  - a deployed label (`policy-<sha>-<YYYY-MM-DD>`, as the CoPE-B image build
+    makes them) is accepted only if `policy.txt` is byte-identical to that
+    file at commit `<sha>`; otherwise the server refuses to start
+  - to try an edited policy, use a `draft-…` label, which can never equal a
+    deployed version (set Charcoal's `CHARCOAL_COPE_B_POLICY_VERSION` to the
+    same label for the gate run)
 - Binds `127.0.0.1:8765` (`--port` to change; `--host` accepts only
   `127.0.0.1` or `::1`). No auth.
 - `POST /runsync` with `{"input": {"contents": [...]}}` returns a COMPLETED

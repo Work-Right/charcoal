@@ -22,14 +22,18 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import socket
 import socketserver
+import subprocess
 import sys
 import threading
 import time
 import uuid
 from collections import OrderedDict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Callable
 
 DEFAULT_PORT = 8765
 LOOPBACK_HOSTS = ("127.0.0.1", "::1")
@@ -51,6 +55,50 @@ def require_policy_version(value: str | None) -> str:
         raise SystemExit("POLICY_VERSION must be set to the deployed policy version, "
                          "e.g. policy-ddac468-2026-07-03")
     return value.strip()
+
+
+# What the CoPE-B image build derives from the commit it builds
+# (.github/workflows/build-cope-b-image.yml): policy-<short sha>-<YYYY-MM-DD>.
+PRODUCTION_LABEL = re.compile(r"policy-([0-9a-f]{7,40})-\d{4}-\d{2}-\d{2}")
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+POLICY_REPO_PATH = "gpu/cope-b-runpod/policy.txt"
+
+
+def git_show_policy(sha: str) -> str | None:
+    """policy.txt as it was at `sha`, or None if git cannot produce it."""
+    result = subprocess.run(
+        ["git", "show", f"{sha}:{POLICY_REPO_PATH}"],
+        cwd=REPO_ROOT, capture_output=True, text=True, check=False,
+    )
+    return result.stdout if result.returncode == 0 else None
+
+
+def verify_policy_label(label: str, policy_text: str,
+                        policy_at: Callable[[str], str | None] = git_show_policy) -> None:
+    """Refuse a policy label that does not describe the policy being served.
+
+    The server reports `label` on every verdict and the client accepts any
+    verdict whose label matches CHARCOAL_COPE_B_POLICY_VERSION. So a
+    production-shaped label must name a commit whose policy.txt is exactly
+    the text loaded; otherwise a draft edit would be scored as the deployed
+    policy. Drafts are fine under a `draft-` label, which can never equal a
+    deployed version.
+    """
+    if label.startswith("draft-"):
+        return
+    match = PRODUCTION_LABEL.fullmatch(label)
+    if not match:
+        raise SystemExit(f"POLICY_VERSION {label!r} is neither a deployed version "
+                         "(policy-<sha>-<YYYY-MM-DD>) nor a draft- label")
+    sha = match.group(1)
+    deployed = policy_at(sha)
+    if deployed is None:
+        raise SystemExit(f"cannot read {POLICY_REPO_PATH} at commit {sha} to verify "
+                         f"POLICY_VERSION {label!r}")
+    if deployed != policy_text:
+        raise SystemExit(f"the loaded policy.txt differs from {POLICY_REPO_PATH} at "
+                         f"{sha}, so it is not {label!r}. Check out that policy, or "
+                         "use a draft- label to try an edited one.")
 
 
 def classify_batch(engine, contents: list[str]) -> list[dict]:
@@ -143,8 +191,10 @@ def main() -> None:
     require_loopback(args.host)
     policy_version = require_policy_version(os.environ.get("POLICY_VERSION"))
 
-    from engine import load_engine
+    from engine import DEFAULT_POLICY_PATH, load_engine
 
+    # Before the ~10 s model load: a wrong label should fail fast.
+    verify_policy_label(policy_version, DEFAULT_POLICY_PATH.read_text(encoding="utf-8"))
     engine = load_engine(args.model, policy_version)
     httpd = make_server(engine, args.host, args.port)
     print(f"local CoPE-B serving {policy_version} on http://{args.host}:{args.port} "

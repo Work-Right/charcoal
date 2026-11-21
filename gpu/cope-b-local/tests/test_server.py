@@ -124,3 +124,46 @@ def test_policy_version_is_required(value):
 
 def test_policy_version_is_trimmed():
     assert server.require_policy_version(" policy-x ") == "policy-x"
+
+
+# --- the policy label must describe the policy actually loaded ------------
+# A production version is `policy-<git sha>-<YYYY-MM-DD>` (the CoPE-B image
+# build derives it from the commit it built). The server classifies with
+# whatever policy.txt is checked out, so without this check a draft policy
+# would be reported, and accepted by the client, as the deployed one.
+
+DEPLOYED = "Deployed policy text.\n"
+
+
+def git_show(commits):
+    return lambda sha: commits.get(sha)
+
+
+def test_production_label_matching_its_commit_is_accepted():
+    server.verify_policy_label("policy-ddac468-2026-07-03", DEPLOYED,
+                               git_show({"ddac468": DEPLOYED}))
+
+
+def test_production_label_with_a_different_policy_is_refused():
+    with pytest.raises(SystemExit, match="differs from"):
+        server.verify_policy_label("policy-ddac468-2026-07-03", "Draft edit.\n",
+                                   git_show({"ddac468": DEPLOYED}))
+
+
+def test_production_label_for_an_unknown_commit_is_refused():
+    with pytest.raises(SystemExit, match="ddac468"):
+        server.verify_policy_label("policy-ddac468-2026-07-03", DEPLOYED, git_show({}))
+
+
+@given(st.text(max_size=30))
+def test_draft_labels_are_always_allowed(suffix):
+    # Requirement: trying a draft policy locally is a supported use, under a
+    # label that can never equal a deployed version.
+    server.verify_policy_label("draft-" + suffix, "anything", git_show({}))
+
+
+@given(st.text(max_size=30).filter(
+    lambda v: not v.startswith("draft-") and not server.PRODUCTION_LABEL.fullmatch(v)))
+def test_any_other_label_is_refused(label):
+    with pytest.raises(SystemExit):
+        server.verify_policy_label(label, DEPLOYED, git_show({}))
