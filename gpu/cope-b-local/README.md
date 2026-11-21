@@ -50,3 +50,25 @@ cache has already wrapped by the time a post starts. Rewinding (trimming) it
 after each post cannot restore the overwritten prefix. The first version did
 that and 70 of 100 answers came back as garbage tokens. The script instead
 snapshots the cache once after the prefix and starts every post from a copy.
+
+## Result vs production: MLX's Gemma 4 code disagrees with the reference
+
+Against the production RunPod endpoint (vLLM, bf16) the 8-bit MLX model
+agreed on 97/100, but all 3 misses were production-toxic, MLX-safe, and two
+were anti-trans / anti-Pride replies, the hostility Charcoal exists to catch.
+
+Tiebreaker on those 3 rows plus 4 controls (`classify_hf_cpu.py`, Hugging
+Face transformers 5.23, bf16 on CPU, ~45 s per row):
+
+| | 3 misses | 4 controls |
+|---|---|---|
+| vLLM (production) | toxic | 2 toxic, 2 safe |
+| HF transformers (reference) | toxic | same as production |
+| MLX 8-bit | safe | same as production |
+| MLX bf16 (full precision) | safe | flips one toxic control to safe |
+
+Full precision does not help, so this is not quantization: mlx-lm 0.32.2's
+`gemma4_text` computes this model differently from the reference. Every text
+setting in `config.json` is read by MLX, so the bug is in the computation,
+not a missed setting. **Do not trust MLX verdicts for this model** until that
+is found or fixed upstream.

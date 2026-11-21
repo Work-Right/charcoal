@@ -1,5 +1,13 @@
 [
   {
+    "hash": "ee86f42770e84e1cfdd6e99b6363b65e15191d36",
+    "short_hash": "ee86f42",
+    "author": "Bryan Guffey",
+    "date": "2026-11-20T18:36:57-08:00",
+    "message": "feat(435): run CoPE-B locally on Apple Silicon with MLX\n\nSpike harness: classify the A/B sample with an 8-bit MLX conversion,\nfetch reference verdicts from the RunPod endpoint, and compare with the\nclassify-gate bar. Reuses the policy prefix via cache snapshot/restore,\nbecause Gemma 4 sliding-window layers make trimming a wrapped cache\ncorrupt the prefix.\n\nMeasured: 5.1 classifications/s, 27.8 GB peak, identical labels with\nand without the prefix cache.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "files_changed": 4
+  },
+  {
     "hash": "e6a721474b918638152f76b0fc710a68812a5437",
     "short_hash": "e6a7214",
     "author": "Bryan Guffey",
