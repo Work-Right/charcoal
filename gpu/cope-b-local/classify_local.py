@@ -169,7 +169,8 @@ def cmd_local(args) -> None:
         # before CONTENT into a different token, so its prompt does not start
         # with the shared prefix. Run that one post in full rather than stop
         # the whole run: slower, but still correct.
-        cached = reuse and toks[:prefix_len] == prefix
+        # len > prefix_len: the continuation must be non-empty to feed the model.
+        cached = reuse and len(toks) > prefix_len and toks[:prefix_len] == prefix
         if reuse and not cached:
             print(f"  {row['id']}: prompt does not start with the shared prefix; "
                   "running it without the prefix cache", file=sys.stderr)
@@ -210,13 +211,18 @@ def cmd_local(args) -> None:
 
 
 def _post(url: str, key: str, body: dict | None) -> dict:
+    # urllib also opens file:// and other schemes, so only ever talk HTTPS to
+    # the endpoint (Semgrep dynamic-urllib-use). The URL comes from our own
+    # RUNPOD_ENDPOINT_URL, but the check costs nothing.
+    if not url.startswith("https://"):
+        sys.exit(f"refusing non-HTTPS endpoint URL: {url!r}")
     req = urllib.request.Request(
         url,
         data=None if body is None else json.dumps(body).encode(),
         headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
         method="GET" if body is None else "POST",
     )
-    with urllib.request.urlopen(req, timeout=120) as resp:
+    with urllib.request.urlopen(req, timeout=120) as resp:  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
         return json.load(resp)
 
 
@@ -226,6 +232,8 @@ def cmd_reference(args) -> None:
     rows = read_rows(Path(args.sample))
     if args.limit:
         rows = rows[: args.limit]
+    if not rows:
+        sys.exit(f"no rows in {args.sample}; refusing to wake the endpoint for nothing")
 
     # One job for the whole sample: the worker batches it internally, and a
     # single job pays the cold start and idle tail once.
