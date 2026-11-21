@@ -81,9 +81,30 @@ def cmd_local(args) -> None:
             [{"role": "user", "content": build_body(policy=policy, content=content)}],
             tokenize=False,
             add_generation_prompt=True,
+            # mlx-lm turns thinking mode ON by default for models that support
+            # it, which injects a `<|think|>` system turn. Production (vLLM via
+            # transformers) leaves it off. Leaving this out made MLX miss
+            # anti-trans and anti-Pride posts production flags (#435).
+            enable_thinking=False,
         )
         # The chat template already emits <bos>; don't add a second one.
         return tokenizer.encode(text, add_special_tokens=False)
+
+    # Guard: the tokens must be exactly what production builds. Production
+    # renders the prompt with plain transformers (gpu/cope-b-runpod/prompt.py),
+    # so render one row that way and refuse to run if MLX's differ. This is
+    # what caught the thinking-mode bug; a silent template change would
+    # otherwise only show up as slightly worse verdicts.
+    from transformers import AutoTokenizer
+
+    hf = AutoTokenizer.from_pretrained(args.model)
+    hf_text = hf.apply_chat_template(
+        [{"role": "user", "content": build_body(policy=policy, content=rows[0]["content"])}],
+        tokenize=False,
+        add_generation_prompt=True,
+    )
+    if hf.encode(hf_text, add_special_tokens=False) != prompt_tokens(rows[0]["content"]):
+        sys.exit("MLX prompt tokens differ from the transformers prompt production uses")
 
     # The policy text (~900 tokens) is identical for every post, so we run it
     # through the model ONCE and reuse its key/value cache, the same idea as

@@ -34,7 +34,7 @@ agreement on at least 50 rows.
 
 8-bit model, the 100-post `tests/fixtures/cope_b/ab_sample.jsonl`:
 
-- **5.1 classifications/s** with the policy prefix reused, 0.46/s without
+- **~5 classifications/s** with the policy prefix reused, 0.46/s without
 - 27.8 GB peak memory, 4 s model load
 - Reusing the prefix gives the same 100 labels as running every prompt in
   full (confidence differs by at most 0.089)
@@ -51,24 +51,28 @@ after each post cannot restore the overwritten prefix. The first version did
 that and 70 of 100 answers came back as garbage tokens. The script instead
 snapshots the cache once after the prefix and starts every post from a copy.
 
-## Result vs production: MLX's Gemma 4 code disagrees with the reference
+## Result vs production: 100/100 after turning thinking mode off
 
-Against the production RunPod endpoint (vLLM, bf16) the 8-bit MLX model
-agreed on 97/100, but all 3 misses were production-toxic, MLX-safe, and two
-were anti-trans / anti-Pride replies, the hostility Charcoal exists to catch.
+Against the production RunPod endpoint (vLLM, bf16, `policy-ddac468-2026-07-03`)
+the 8-bit MLX model now agrees on **100/100** labels; confidence differs by a
+median of 0.000 and at most 0.058.
 
-Tiebreaker on those 3 rows plus 4 controls (`classify_hf_cpu.py`, Hugging
-Face transformers 5.23, bf16 on CPU, ~45 s per row):
+### The thinking-mode trap
 
-| | 3 misses | 4 controls |
-|---|---|---|
-| vLLM (production) | toxic | 2 toxic, 2 safe |
-| HF transformers (reference) | toxic | same as production |
-| MLX 8-bit | safe | same as production |
-| MLX bf16 (full precision) | safe | flips one toxic control to safe |
+The first comparison was 97/100, and all 3 misses were production-toxic,
+MLX-safe: two were anti-trans and anti-Pride replies, the hostility Charcoal
+exists to catch. Full precision on MLX missed them too, while Hugging Face's
+reference code (`classify_hf_cpu.py`, CPU) agreed with production, which
+first looked like a bug in MLX's Gemma 4 maths.
 
-Full precision does not help, so this is not quantization: mlx-lm 0.32.2's
-`gemma4_text` computes this model differently from the reference. Every text
-setting in `config.json` is read by MLX, so the bug is in the computation,
-not a missed setting. **Do not trust MLX verdicts for this model** until that
-is found or fixed upstream.
+It was not. A layer-by-layer comparison (`diff_layers.py`) stopped before the
+first layer: the two sides were feeding the model **different tokens**.
+mlx-lm's `apply_chat_template` turns thinking mode on by default for models
+that support it, which inserts a `<|turn>system\n<|think|>` turn at the top.
+transformers, and therefore production, leaves it off. With
+`enable_thinking=False` the tokens are identical and so are the verdicts.
+
+`classify_local.py` now renders the first row with plain transformers and
+exits if MLX's tokens differ, so a template change cannot silently degrade
+verdicts again. (Checked by flipping the flag back: the run stops with
+"MLX prompt tokens differ".)

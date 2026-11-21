@@ -1,5 +1,13 @@
 [
   {
+    "hash": "a7ce874d30572cb6de5411738114b941974e24b5",
+    "short_hash": "a7ce874",
+    "author": "Bryan Guffey",
+    "date": "2026-11-20T18:56:25-08:00",
+    "message": "feat(435): HF reference tiebreaker shows MLX Gemma 4 diverges\n\ntransformers on CPU matches production vLLM on all 7 rows; MLX misses\n3 identity-hostility posts at both 8-bit and bf16, so the gap is the\nMLX gemma4_text implementation, not quantization.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "files_changed": 4
+  },
+  {
     "hash": "ee86f42770e84e1cfdd6e99b6363b65e15191d36",
     "short_hash": "ee86f42",
     "author": "Bryan Guffey",
