@@ -1,5 +1,13 @@
 [
   {
+    "hash": "e46e71d8b63d8927d4186c7dbd4a209d3e76ee1b",
+    "short_hash": "e46e71d",
+    "author": "Bryan Guffey",
+    "date": "2026-11-20T20:39:20-08:00",
+    "message": "fix(435): disable mlx-lm thinking mode; local CoPE-B matches prod 100/100\n\nmlx-lm enables thinking mode by default, which injects a <|think|>\nsystem turn that production (transformers via vLLM) never sends. That,\nnot MLX maths, caused the 3 missed identity-hostility posts. With\nenable_thinking=False the prompt tokens match transformers exactly and\nthe 8-bit model agrees with the RunPod endpoint on 100/100.\n\nAdds a guard that exits if the MLX prompt tokens differ from the\ntransformers rendering (verified by re-enabling thinking), and the\ndiff_layers.py tool that found it.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "files_changed": 5
+  },
+  {
     "hash": "a7ce874d30572cb6de5411738114b941974e24b5",
     "short_hash": "a7ce874",
     "author": "Bryan Guffey",

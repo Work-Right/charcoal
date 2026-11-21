@@ -14042,9 +14042,9 @@
       "node_type": "goal",
       "title": "Spike #435: run CoPE-B locally on Mac mini (MLX/llama.cpp), gate vs full-precision",
       "description": null,
-      "status": "pending",
+      "status": "completed",
       "created_at": "2026-11-20T18:21:54.972717-08:00",
-      "updated_at": "2026-11-20T18:21:54.972717-08:00",
+      "updated_at": "2026-11-20T20:42:30.249192-08:00",
       "metadata_json": "{\"branch\":\"sesh/run-zentropi-model-on-mac-mini\",\"confidence\":70,\"prompt\":\"Is it possible to run the Zentropi model we use on the Mac mini, whether in a docker container or Linux machine using orbstack?\\n[...later...]\\nStart the Mac mini test, put the rest of this in an issue\"}"
     },
     {
@@ -14145,6 +14145,39 @@
       "created_at": "2026-11-20T18:56:46.572325-08:00",
       "updated_at": "2026-11-20T18:56:46.572325-08:00",
       "metadata_json": "{\"branch\":\"sesh/run-zentropi-model-on-mac-mini\",\"commit\":\"a7ce874\",\"confidence\":90}"
+    },
+    {
+      "id": 1296,
+      "change_id": "6769f45c-333c-4e39-94b0-da2c81e0c714",
+      "node_type": "observation",
+      "title": "Root cause: mlx-lm apply_chat_template enables thinking mode by default (<|think|> system turn); prod never sends it. Earlier 'MLX maths bug' conclusion (1295) was wrong",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-11-20T20:39:41.605405-08:00",
+      "updated_at": "2026-11-20T20:39:41.605405-08:00",
+      "metadata_json": "{\"branch\":\"sesh/run-zentropi-model-on-mac-mini\",\"commit\":\"e46e71d\",\"confidence\":95}"
+    },
+    {
+      "id": 1297,
+      "change_id": "e1c7737c-8af4-491a-aeed-ac12dcf96db7",
+      "node_type": "outcome",
+      "title": "With enable_thinking=False: MLX 8-bit matches prod RunPod 100/100, median conf drift 0.000; token guard added + mutation-checked",
+      "description": null,
+      "status": "completed",
+      "created_at": "2026-11-20T20:39:41.623582-08:00",
+      "updated_at": "2026-11-20T20:42:30.255567-08:00",
+      "metadata_json": "{\"branch\":\"sesh/run-zentropi-model-on-mac-mini\",\"commit\":\"e46e71d\",\"confidence\":95}"
+    },
+    {
+      "id": 1298,
+      "change_id": "063e5f56-35ab-4905-8af0-e28619da4d4f",
+      "node_type": "goal",
+      "title": "#437: groundwork for a local (Mac/MLX) CoPE-B backend; RunPod stays production",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-11-20T21:20:41.134842-08:00",
+      "updated_at": "2026-11-20T21:20:41.134842-08:00",
+      "metadata_json": "{\"branch\":\"sesh/run-zentropi-model-on-mac-mini\",\"confidence\":80,\"prompt\":\"Runpod does seem the best for now but we should have the stuff in place to do 437\"}"
     }
   ],
   "edges": [
@@ -28843,6 +28876,39 @@
       "weight": 1.0,
       "rationale": "tiebreaker explains the misses",
       "created_at": "2026-11-20T18:56:46.587676-08:00"
+    },
+    {
+      "id": 1347,
+      "from_node_id": 1295,
+      "to_node_id": 1296,
+      "from_change_id": "82de41eb-14a9-4ed6-b17e-ee7edbb2d5f8",
+      "to_change_id": "6769f45c-333c-4e39-94b0-da2c81e0c714",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "layer diff found the real cause",
+      "created_at": "2026-11-20T20:39:46.513062-08:00"
+    },
+    {
+      "id": 1348,
+      "from_node_id": 1291,
+      "to_node_id": 1297,
+      "from_change_id": "2f0791d0-c405-4b83-bfa4-459c1480e939",
+      "to_change_id": "e1c7737c-8af4-491a-aeed-ac12dcf96db7",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "final result",
+      "created_at": "2026-11-20T20:39:46.518621-08:00"
+    },
+    {
+      "id": 1349,
+      "from_node_id": 1296,
+      "to_node_id": 1297,
+      "from_change_id": "6769f45c-333c-4e39-94b0-da2c81e0c714",
+      "to_change_id": "e1c7737c-8af4-491a-aeed-ac12dcf96db7",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "fix",
+      "created_at": "2026-11-20T20:39:46.524013-08:00"
     }
   ],
   "documents": [
