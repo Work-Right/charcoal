@@ -14178,6 +14178,28 @@
       "created_at": "2026-11-20T21:20:41.134842-08:00",
       "updated_at": "2026-11-20T21:20:41.134842-08:00",
       "metadata_json": "{\"branch\":\"sesh/run-zentropi-model-on-mac-mini\",\"confidence\":80,\"prompt\":\"Runpod does seem the best for now but we should have the stuff in place to do 437\"}"
+    },
+    {
+      "id": 1299,
+      "change_id": "46f0a0b4-a75f-4eb8-ac66-70e924dddcb2",
+      "node_type": "action",
+      "title": "Wrote #437 spec + TDD plan; opened PR #171 to staging with spike tooling",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-11-20T21:22:40.818172-08:00",
+      "updated_at": "2026-11-20T21:22:40.818172-08:00",
+      "metadata_json": "{\"branch\":\"sesh/run-zentropi-model-on-mac-mini\",\"commit\":\"b78602d\",\"confidence\":85,\"files\":[\"docs/superpowers/specs/2026-11-20-437-local-cope-b-backend-design.md\",\"docs/superpowers/plans/2026-11-20-437-local-cope-b-backend.md\"]}"
+    },
+    {
+      "id": 1300,
+      "change_id": "0e79314e-fc32-4dd3-887e-69eed1f6a04a",
+      "node_type": "decision",
+      "title": "RunPod stays production; local MLX backend specced (#437) but not built",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-11-20T21:22:43.909506-08:00",
+      "updated_at": "2026-11-20T21:22:43.909506-08:00",
+      "metadata_json": "{\"branch\":\"sesh/run-zentropi-model-on-mac-mini\",\"confidence\":90}"
     }
   ],
   "edges": [
@@ -28909,6 +28931,28 @@
       "weight": 1.0,
       "rationale": "fix",
       "created_at": "2026-11-20T20:39:46.524013-08:00"
+    },
+    {
+      "id": 1350,
+      "from_node_id": 1298,
+      "to_node_id": 1300,
+      "from_change_id": "063e5f56-35ab-4905-8af0-e28619da4d4f",
+      "to_change_id": "0e79314e-fc32-4dd3-887e-69eed1f6a04a",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Bryan: RunPod best for now",
+      "created_at": "2026-11-20T21:22:46.957488-08:00"
+    },
+    {
+      "id": 1351,
+      "from_node_id": 1300,
+      "to_node_id": 1299,
+      "from_change_id": "0e79314e-fc32-4dd3-887e-69eed1f6a04a",
+      "to_change_id": "46f0a0b4-a75f-4eb8-ac66-70e924dddcb2",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "groundwork",
+      "created_at": "2026-11-20T21:22:46.962530-08:00"
     }
   ],
   "documents": [

@@ -29,6 +29,7 @@ import argparse
 import json
 import math
 import os
+import re
 import sys
 import time
 import urllib.request
@@ -40,9 +41,23 @@ sys.path.insert(0, str(RUNPOD_DIR))
 
 from prompt import build_body  # noqa: E402  (path set up just above)
 
-# Same bar as src/cli/classify_gate.rs (AGREEMENT_THRESHOLD / MIN_SAMPLE).
-AGREEMENT_THRESHOLD = 0.90
-MIN_SAMPLE = 50
+GATE_RS = HERE.parent.parent / "src/cli/classify_gate.rs"
+
+
+def gate_bar() -> tuple[float, int]:
+    """Read AGREEMENT_THRESHOLD and MIN_SAMPLE from the Rust gate itself.
+
+    A copied constant drifted once already: the gate moved from 0.90 to 0.85
+    (34bb90b) while this script still said 0.90. Reading the source keeps
+    `compare` on the same bar as `charcoal classify-gate`, and fails loudly
+    if the constants are renamed rather than guessing a value.
+    """
+    src = GATE_RS.read_text(encoding="utf-8")
+    t = re.search(r"pub const AGREEMENT_THRESHOLD: f32 = ([0-9.]+);", src)
+    n = re.search(r"pub const MIN_SAMPLE: usize = ([0-9]+);", src)
+    if not (t and n):
+        sys.exit(f"could not find AGREEMENT_THRESHOLD / MIN_SAMPLE in {GATE_RS}")
+    return float(t.group(1)), int(n.group(1))
 
 
 def read_rows(path: Path) -> list[dict]:
@@ -150,11 +165,19 @@ def cmd_local(args) -> None:
     t_start = time.perf_counter()
     for i, row in enumerate(rows):
         toks = prompt_tokens(row["content"])
-        if toks[:prefix_len] != prefix:
-            sys.exit(f"row {row['id']}: prompt does not start with the shared prefix")
+        # A post that starts with whitespace can merge with the blank line
+        # before CONTENT into a different token, so its prompt does not start
+        # with the shared prefix. Run that one post in full rather than stop
+        # the whole run: slower, but still correct.
+        cached = reuse and toks[:prefix_len] == prefix
+        if reuse and not cached:
+            print(f"  {row['id']}: prompt does not start with the shared prefix; "
+                  "running it without the prefix cache", file=sys.stderr)
         t = time.perf_counter()
-        start = prefix_len if reuse else 0
-        logits = model(mx.array([toks[start:]]), cache=fresh_cache())
+        if cached:
+            logits = model(mx.array([toks[prefix_len:]]), cache=fresh_cache())
+        else:
+            logits = model(mx.array([toks]), cache=make_prompt_cache(model))
         last = logits[0, -1, :].astype(mx.float32)
         logprobs = last - mx.logsumexp(last)
         top = int(mx.argmax(logprobs).item())
@@ -234,18 +257,28 @@ def cmd_reference(args) -> None:
 
 
 def cmd_compare(args) -> None:
+    threshold, min_sample = gate_bar()
     cand = {r["id"]: r for r in read_rows(Path(args.candidate))}
     ref = {r["id"]: r for r in read_rows(Path(args.reference))}
-    ids = [i for i in ref if i in cand]
-    usable = [i for i in ids if cand[i].get("ok") and ref[i].get("ok")]
+    # Score against EVERY reference row, like classify-gate. A row the
+    # candidate is missing, or where either side errored, counts as a
+    # disagreement: dropping it would let a run with many garbage answers
+    # (the thinking-mode and cache-trim bugs both produced those) report
+    # 100% on the few rows that survived.
+    ids = list(ref)
+    usable = [i for i in ids if i in cand and cand[i].get("ok") and ref[i].get("ok")]
+    failed = [i for i in ids if i not in usable]
     agree = [i for i in usable if cand[i]["toxic"] == ref[i]["toxic"]]
-    errors = len(ids) - len(usable)
-    rate = len(agree) / len(usable) if usable else 0.0
-    passed = len(usable) >= MIN_SAMPLE and rate >= AGREEMENT_THRESHOLD
+    rate = len(agree) / len(ids) if ids else 0.0
+    passed = len(ids) >= min_sample and rate >= threshold
 
-    print(f"rows compared: {len(usable)} (errors skipped: {errors})")
-    print(f"agreement: {len(agree)}/{len(usable)} = {rate:.1%}  "
-          f"-> {'PASS' if passed else 'FAIL'} (bar {AGREEMENT_THRESHOLD:.0%}, min {MIN_SAMPLE})")
+    print(f"rows: {len(ids)} (missing or errored, counted as disagreeing: {len(failed)})")
+    print(f"agreement: {len(agree)}/{len(ids)} = {rate:.1%}  "
+          f"-> {'PASS' if passed else 'FAIL'} (bar {threshold:.0%}, min {min_sample})")
+    for i in failed:
+        why = "missing from candidate" if i not in cand else (
+            cand[i].get("error") if not cand[i].get("ok") else ref[i].get("error"))
+        print(f"  FAILED ROW {i}: {why}")
     stricter_local = [i for i in usable if cand[i]["toxic"] and not ref[i]["toxic"]]
     stricter_ref = [i for i in usable if ref[i]["toxic"] and not cand[i]["toxic"]]
     print(f"local says toxic, reference safe: {len(stricter_local)}")

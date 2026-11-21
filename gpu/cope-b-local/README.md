@@ -27,8 +27,10 @@ $P gpu/cope-b-local/classify_local.py reference --out /tmp/ref.jsonl     # needs
 $P gpu/cope-b-local/classify_local.py compare --candidate /tmp/local.jsonl --reference /tmp/ref.jsonl
 ```
 
-`compare` uses the same bar as `charcoal classify-gate`: at least 90%
-agreement on at least 50 rows.
+`compare` reads its bar from `src/cli/classify_gate.rs` (currently at
+least 85% agreement on at least 50 rows), and scores every reference row: a
+row the candidate is missing, or where either side errored, counts as a
+disagreement.
 
 ## Measured on the M4 Pro Mac mini (64 GB), 2026-11-20
 
