@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import os
 import re
 import sys
@@ -37,9 +36,6 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 RUNPOD_DIR = HERE.parent / "cope-b-runpod"
-sys.path.insert(0, str(RUNPOD_DIR))
-
-from prompt import build_body  # noqa: E402  (path set up just above)
 
 GATE_RS = HERE.parent.parent / "src/cli/classify_gate.rs"
 
@@ -77,11 +73,12 @@ def write_jsonl(path: Path, rows: list[dict]) -> None:
 
 
 def cmd_local(args) -> None:
+    # The classification logic (prompt, token guard, prefix snapshot) lives
+    # in engine.py, shared with server.py, so the two can never drift.
     import mlx.core as mx
-    from mlx_lm import load
-    from mlx_lm.models.cache import make_prompt_cache
 
-    policy = Path(args.policy).read_text(encoding="utf-8")
+    from engine import load_engine
+
     rows = read_rows(Path(args.sample))
     if args.limit:
         rows = rows[: args.limit]
@@ -89,124 +86,27 @@ def cmd_local(args) -> None:
         sys.exit(f"no rows in {args.sample}")
 
     t0 = time.perf_counter()
-    model, tokenizer = load(args.model)
+    engine = load_engine(args.model, args.policy_version, policy_path=Path(args.policy),
+                         reuse_prefix=not args.no_prefix_cache)
     load_s = time.perf_counter() - t0
-    print(f"loaded {args.model} in {load_s:.1f}s", file=sys.stderr)
-
-    def prompt_tokens(content: str) -> list[int]:
-        text = tokenizer.apply_chat_template(
-            [{"role": "user", "content": build_body(policy=policy, content=content)}],
-            tokenize=False,
-            add_generation_prompt=True,
-            # mlx-lm turns thinking mode ON by default for models that support
-            # it, which injects a `<|think|>` system turn. Production (vLLM via
-            # transformers) leaves it off. Leaving this out made MLX miss
-            # anti-trans and anti-Pride posts production flags (#435).
-            enable_thinking=False,
-        )
-        # The chat template already emits <bos>; don't add a second one.
-        return tokenizer.encode(text, add_special_tokens=False)
-
-    # Guard: the tokens must be exactly what production builds. Production
-    # renders the prompt with plain transformers (gpu/cope-b-runpod/prompt.py),
-    # so render one row that way and refuse to run if MLX's differ. This is
-    # what caught the thinking-mode bug; a silent template change would
-    # otherwise only show up as slightly worse verdicts.
-    from transformers import AutoTokenizer
-
-    hf = AutoTokenizer.from_pretrained(args.model)
-    hf_text = hf.apply_chat_template(
-        [{"role": "user", "content": build_body(policy=policy, content=rows[0]["content"])}],
-        tokenize=False,
-        add_generation_prompt=True,
-    )
-    if hf.encode(hf_text, add_special_tokens=False) != prompt_tokens(rows[0]["content"]):
-        sys.exit("MLX prompt tokens differ from the transformers prompt production uses")
-
-    # The policy text (~900 tokens) is identical for every post, so we run it
-    # through the model ONCE and reuse its key/value cache, the same idea as
-    # vLLM's enable_prefix_caching in the RunPod worker. The shared prefix is
-    # everything up to where two different contents first diverge.
-    a, b = prompt_tokens("A"), prompt_tokens("B")
-    prefix_len = next(i for i, (x, y) in enumerate(zip(a, b)) if x != y)
-    prefix = a[:prefix_len]
-
-    # Snapshot-and-restore, NOT trim. Gemma 4 uses a 1,024-token sliding
-    # window on most layers, and the policy prefix alone is longer than that,
-    # so those layers keep a *rotating* cache. Rewinding ("trimming") a cache
-    # that has already wrapped cannot bring back the prefix tokens the post
-    # overwrote: in the first version of this script every post after the
-    # first saw a corrupted policy and 70/100 answers were garbage tokens.
-    # Instead we keep the post-prefix state and start each post from a copy.
-    reuse = not args.no_prefix_cache
-    snapshot = None
-    if reuse:
-        cache = make_prompt_cache(model)
-        model(mx.array([prefix]), cache=cache)
-        snapshot = [c.state for c in cache]
-        mx.eval([x for st in snapshot for x in st if isinstance(x, mx.array)])
-
-    def fresh_cache():
-        cache = make_prompt_cache(model)
-        if snapshot is not None:
-            for layer, st in zip(cache, snapshot):
-                # mx.array(x) makes a new array object, so the in-place cache
-                # update during the post can't write through to the snapshot.
-                layer.state = tuple(mx.array(x) if isinstance(x, mx.array) else x for x in st)
-        return cache
-
-    print(f"shared prefix {prefix_len} tokens; prefix cache {'ON' if reuse else 'OFF'}",
-          file=sys.stderr)
-
-    zero_id = tokenizer.encode("0", add_special_tokens=False)
-    one_id = tokenizer.encode("1", add_special_tokens=False)
-    if len(zero_id) != 1 or len(one_id) != 1:
-        sys.exit(f"'0'/'1' are not single tokens: {zero_id} {one_id}")
+    print(f"loaded {args.model} in {load_s:.1f}s; shared prefix {engine.prefix_len} tokens; "
+          f"prefix cache {'OFF' if args.no_prefix_cache else 'ON'}", file=sys.stderr)
 
     out = []
     t_start = time.perf_counter()
     for i, row in enumerate(rows):
-        toks = prompt_tokens(row["content"])
-        # A post that starts with whitespace can merge with the blank line
-        # before CONTENT into a different token, so its prompt does not start
-        # with the shared prefix. Run that one post in full rather than stop
-        # the whole run: slower, but still correct.
-        # len > prefix_len: the continuation must be non-empty to feed the model.
-        cached = reuse and len(toks) > prefix_len and toks[:prefix_len] == prefix
-        if reuse and not cached:
-            print(f"  {row['id']}: prompt does not start with the shared prefix; "
-                  "running it without the prefix cache", file=sys.stderr)
         t = time.perf_counter()
-        if cached:
-            logits = model(mx.array([toks[prefix_len:]]), cache=fresh_cache())
-        else:
-            logits = model(mx.array([toks]), cache=make_prompt_cache(model))
-        last = logits[0, -1, :].astype(mx.float32)
-        logprobs = last - mx.logsumexp(last)
-        top = int(mx.argmax(logprobs).item())
-        token = tokenizer.decode([top]).strip().lstrip("▁")
+        slot = engine.classify_one(row["content"])
         elapsed = time.perf_counter() - t
-
-        if token not in {"0", "1"}:
-            slot = {"ok": False, "error": f"unexpected model token: {token!r}"}
-        else:
-            slot = {
-                "ok": True,
-                "toxic": token == "1",
-                "confidence": math.exp(float(logprobs[top].item())),
-                # Kept for analysis: how sure the model was of "toxic",
-                # whichever token it emitted.
-                "p_toxic": math.exp(float(logprobs[one_id[0]].item())),
-            }
-        out.append({"id": row["id"], **slot, "tokens": len(toks), "seconds": round(elapsed, 3)})
+        out.append({"id": row["id"], **slot, "seconds": round(elapsed, 3)})
         print(f"[{i + 1}/{len(rows)}] {row['id']} {slot.get('toxic')} "
               f"{slot.get('confidence', 0):.3f} {elapsed:.2f}s", file=sys.stderr)
 
     total = time.perf_counter() - t_start
     write_jsonl(Path(args.out), out)
     print(f"{len(out)} rows in {total:.1f}s = {len(out) / total:.2f} classifications/s "
-          f"(model load {load_s:.1f}s excluded); peak memory "
-          f"{mx.get_peak_memory() / 1e9:.1f} GB", file=sys.stderr)
+          f"(model load {load_s:.1f}s excluded); {engine.uncached_posts} without the prefix "
+          f"cache; peak memory {mx.get_peak_memory() / 1e9:.1f} GB", file=sys.stderr)
 
 
 # ------------------------------------------------------- reference (RunPod)
@@ -318,6 +218,8 @@ def main() -> None:
     lo.add_argument("--out", required=True)
     lo.add_argument("--limit", type=int, default=0)
     lo.add_argument("--no-prefix-cache", action="store_true")
+    # Only labels the output slots; the local run makes no policy check.
+    lo.add_argument("--policy-version", default="local-unchecked")
     lo.set_defaults(func=cmd_local)
 
     re_ = sub.add_parser("reference")

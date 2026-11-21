@@ -14174,9 +14174,9 @@
       "node_type": "goal",
       "title": "#437: groundwork for a local (Mac/MLX) CoPE-B backend; RunPod stays production",
       "description": null,
-      "status": "pending",
+      "status": "completed",
       "created_at": "2026-11-20T21:20:41.134842-08:00",
-      "updated_at": "2026-11-20T21:20:41.134842-08:00",
+      "updated_at": "2026-11-20T22:14:37.678747-08:00",
       "metadata_json": "{\"branch\":\"sesh/run-zentropi-model-on-mac-mini\",\"confidence\":80,\"prompt\":\"Runpod does seem the best for now but we should have the stuff in place to do 437\"}"
     },
     {
@@ -14200,6 +14200,39 @@
       "created_at": "2026-11-20T21:22:43.909506-08:00",
       "updated_at": "2026-11-20T21:22:43.909506-08:00",
       "metadata_json": "{\"branch\":\"sesh/run-zentropi-model-on-mac-mini\",\"confidence\":90}"
+    },
+    {
+      "id": 1301,
+      "change_id": "f610b2f4-2b1e-4634-966b-c32e529bed9e",
+      "node_type": "outcome",
+      "title": "PR #171 ready: CI (both jobs), PR-Agent (5/5 findings resolved), Semgrep green on 5d52f0e; mergeable clean",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-11-20T22:10:57.484744-08:00",
+      "updated_at": "2026-11-20T22:10:57.484744-08:00",
+      "metadata_json": "{\"branch\":\"sesh/run-zentropi-model-on-mac-mini\",\"commit\":\"5d52f0e\",\"confidence\":95}"
+    },
+    {
+      "id": 1302,
+      "change_id": "144e2282-f0b5-4271-a270-b6016e4ef059",
+      "node_type": "outcome",
+      "title": "PR #171 merged to staging (f86f2f6): spike tooling + #437 spec/plan",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-11-20T22:14:37.657916-08:00",
+      "updated_at": "2026-11-20T22:14:37.657916-08:00",
+      "metadata_json": "{\"branch\":\"sesh/run-zentropi-model-on-mac-mini\",\"confidence\":95}"
+    },
+    {
+      "id": 1303,
+      "change_id": "65244c50-977c-4de1-a658-a42e5fc76659",
+      "node_type": "action",
+      "title": "Implement #437 Task 1-2: Python loopback server (RunPod wire format, startup guards)",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-11-20T22:16:13.850674-08:00",
+      "updated_at": "2026-11-20T22:16:13.850674-08:00",
+      "metadata_json": "{\"branch\":\"feat/437-local-cope-b\",\"commit\":\"f86f2f6\",\"confidence\":80,\"files\":[\"gpu/cope-b-local/server.py\",\"gpu/cope-b-local/tests/\"]}"
     }
   ],
   "edges": [
@@ -28953,6 +28986,39 @@
       "weight": 1.0,
       "rationale": "groundwork",
       "created_at": "2026-11-20T21:22:46.962530-08:00"
+    },
+    {
+      "id": 1352,
+      "from_node_id": 1299,
+      "to_node_id": 1301,
+      "from_change_id": "46f0a0b4-a75f-4eb8-ac66-70e924dddcb2",
+      "to_change_id": "f610b2f4-2b1e-4634-966b-c32e529bed9e",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "PR result",
+      "created_at": "2026-11-20T22:10:57.501047-08:00"
+    },
+    {
+      "id": 1353,
+      "from_node_id": 1301,
+      "to_node_id": 1302,
+      "from_change_id": "f610b2f4-2b1e-4634-966b-c32e529bed9e",
+      "to_change_id": "144e2282-f0b5-4271-a270-b6016e4ef059",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "merged",
+      "created_at": "2026-11-20T22:14:37.673595-08:00"
+    },
+    {
+      "id": 1354,
+      "from_node_id": 1300,
+      "to_node_id": 1303,
+      "from_change_id": "0e79314e-fc32-4dd3-887e-69eed1f6a04a",
+      "to_change_id": "65244c50-977c-4de1-a658-a42e5fc76659",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Bryan: kick off 437",
+      "created_at": "2026-11-20T22:16:13.866592-08:00"
     }
   ],
   "documents": [
