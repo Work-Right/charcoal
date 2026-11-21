@@ -1,5 +1,13 @@
 [
   {
+    "hash": "3472ac4e05df0419c88f445dcd956c2e4d934b90",
+    "short_hash": "3472ac4",
+    "author": "Bryan Guffey",
+    "date": "2026-11-20T22:48:18-08:00",
+    "message": "fix(437): refuse a policy label that does not match the loaded policy\n\n/code-review: the server reported whatever POLICY_VERSION it was given\nwhile classifying with the checked-out policy.txt, so a draft policy\nwould be scored as the deployed one and pass the client's policy check.\nA deployed label (policy-<sha>-<date>, as the image build derives it)\nis now accepted only if policy.txt is byte-identical to that file at\n<sha>; drafts run under a draft- label that can never equal a deployed\nversion; anything else is refused. Checked before the model loads.\n\nVerified live: the deployed label passes on the current policy, and an\nedited policy.txt, an unknown commit and a bare label are all refused.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "files_changed": 3
+  },
+  {
     "hash": "1c35a06f325271ed78d627800982e29490af5437",
     "short_hash": "1c35a06",
     "author": "Bryan Guffey",

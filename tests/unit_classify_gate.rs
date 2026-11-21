@@ -65,3 +65,113 @@ fn gate_fails_when_sample_below_min() {
         _ => panic!("expected Fail for tiny sample"),
     }
 }
+
+/// #437 (PR-Agent on #173): a batch whose policy differs from
+/// CHARCOAL_COPE_B_POLICY_VERSION is only LOGGED by the RunPod client; its
+/// verdicts are still returned. So the gate and compare tools must run each
+/// backend's identity probe before classifying, the way the web scan paths
+/// and eval-classifiers already do, or a server on the wrong policy (local or
+/// RunPod) would be scored as if it were the deployed one.
+mod probe_first {
+    use async_trait::async_trait;
+    use charcoal::toxicity::classifier::{ClassifierVerdict, ToxicityClassifier};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    struct Probed {
+        probe_ok: bool,
+        classified: AtomicUsize,
+    }
+    impl Probed {
+        fn new(probe_ok: bool) -> Arc<Self> {
+            Arc::new(Self {
+                probe_ok,
+                classified: AtomicUsize::new(0),
+            })
+        }
+    }
+    #[async_trait]
+    impl ToxicityClassifier for Probed {
+        async fn classify(&self, _content: &str) -> anyhow::Result<ClassifierVerdict> {
+            self.classified.fetch_add(1, Ordering::SeqCst);
+            Ok(ClassifierVerdict {
+                toxic_token: false,
+                confidence: 0.9,
+                latency_ms: 1,
+                model_id: "m".into(),
+                policy_version: "p".into(),
+            })
+        }
+        async fn probe_identity(&self) -> anyhow::Result<()> {
+            if self.probe_ok {
+                Ok(())
+            } else {
+                anyhow::bail!("policy mismatch: endpoint reports policy-other")
+            }
+        }
+        fn name(&self) -> &'static str {
+            "probed"
+        }
+        fn model_id(&self) -> &'static str {
+            "m"
+        }
+        fn policy_version(&self) -> &'static str {
+            "p"
+        }
+        fn threshold(&self) -> f32 {
+            0.5
+        }
+    }
+
+    fn sample() -> tempfile::NamedTempFile {
+        let f = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(f.path(), "{\"id\":\"a\",\"content\":\"hello\"}\n").unwrap();
+        f
+    }
+
+    #[tokio::test]
+    async fn gate_refuses_before_classifying_when_a_probe_fails() {
+        for (cand_ok, ref_ok) in [(false, true), (true, false)] {
+            let cand = Probed::new(cand_ok);
+            let refr = Probed::new(ref_ok);
+            let out = tempfile::NamedTempFile::new().unwrap();
+            let result = charcoal::cli::classify_gate::run(
+                cand.clone(),
+                refr.clone(),
+                sample().path(),
+                out.path(),
+            )
+            .await;
+            let Err(err) = result else {
+                panic!("a failed probe must stop the gate")
+            };
+            assert!(format!("{err:#}").contains("policy mismatch"), "{err:#}");
+            assert_eq!(cand.classified.load(Ordering::SeqCst), 0);
+            assert_eq!(refr.classified.load(Ordering::SeqCst), 0);
+        }
+    }
+
+    #[tokio::test]
+    async fn compare_refuses_before_classifying_when_a_probe_fails() {
+        let a = Probed::new(true);
+        let b = Probed::new(false);
+        let result =
+            charcoal::cli::classify_compare::run(a.clone(), b.clone(), sample().path()).await;
+        assert!(result.is_err(), "a failed probe must stop the compare");
+        assert_eq!(
+            a.classified.load(Ordering::SeqCst) + b.classified.load(Ordering::SeqCst),
+            0
+        );
+    }
+
+    #[tokio::test]
+    async fn gate_runs_when_both_probes_pass() {
+        let cand = Probed::new(true);
+        let refr = Probed::new(true);
+        let out = tempfile::NamedTempFile::new().unwrap();
+        charcoal::cli::classify_gate::run(cand.clone(), refr.clone(), sample().path(), out.path())
+            .await
+            .expect("gate runs");
+        assert_eq!(cand.classified.load(Ordering::SeqCst), 1);
+    }
+}

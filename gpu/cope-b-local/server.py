@@ -126,6 +126,7 @@ class _LoopbackHTTPServer(ThreadingHTTPServer):
 def make_server(engine, host: str = "127.0.0.1", port: int = DEFAULT_PORT) -> ThreadingHTTPServer:
     require_loopback(host)
     # One model, one Metal device: classify one batch at a time (spec D8).
+    # The same lock guards `jobs`, which handler threads read and evict.
     lock = threading.Lock()
     jobs: OrderedDict[str, dict] = OrderedDict()
 
@@ -150,26 +151,30 @@ def make_server(engine, host: str = "127.0.0.1", port: int = DEFAULT_PORT) -> Th
             except (KeyError, TypeError, ValueError):
                 return self._send(400, {"error": 'body must be {"input": {"contents": [str, …]}}'})
 
-            start = time.perf_counter()
             with lock:
+                start = time.perf_counter()
                 verdicts = classify_batch(engine, contents)
-            envelope = {
-                "id": uuid.uuid4().hex,
-                "status": "COMPLETED",
-                "delayTime": 0,
-                "executionTime": int((time.perf_counter() - start) * 1000),
-                "output": {"verdicts": verdicts},
-            }
-            jobs[envelope["id"]] = envelope
-            while len(jobs) > KEPT_JOBS:
-                jobs.popitem(last=False)
+                envelope = {
+                    "id": uuid.uuid4().hex,
+                    "status": "COMPLETED",
+                    "delayTime": 0,
+                    "executionTime": int((time.perf_counter() - start) * 1000),
+                    "output": {"verdicts": verdicts},
+                }
+                jobs[envelope["id"]] = envelope
+                while len(jobs) > KEPT_JOBS:
+                    jobs.popitem(last=False)
             self._send(200, envelope)
 
         def do_GET(self):  # noqa: N802
             prefix = "/status/"
-            if self.path.startswith(prefix) and self.path[len(prefix):] in jobs:
-                return self._send(200, jobs[self.path[len(prefix):]])
-            self._send(404, {"error": f"unknown job or path {self.path}"})
+            envelope = None
+            if self.path.startswith(prefix):
+                with lock:
+                    envelope = jobs.get(self.path[len(prefix):])
+            if envelope is None:
+                return self._send(404, {"error": f"unknown job or path {self.path}"})
+            self._send(200, envelope)
 
         def log_message(self, fmt, *args):  # quieter than the default per-request line
             sys.stderr.write("local-cope-b: " + fmt % args + "\n")
@@ -195,7 +200,10 @@ def main() -> None:
 
     # Before the ~10 s model load: a wrong label should fail fast.
     verify_policy_label(policy_version, DEFAULT_POLICY_PATH.read_text(encoding="utf-8"))
-    engine = load_engine(args.model, policy_version)
+    try:
+        engine = load_engine(args.model, policy_version)
+    except RuntimeError as exc:  # the engine's startup guards
+        raise SystemExit(str(exc)) from exc
     httpd = make_server(engine, args.host, args.port)
     print(f"local CoPE-B serving {policy_version} on http://{args.host}:{args.port} "
           f"(prefix {engine.prefix_len} tokens)", file=sys.stderr)

@@ -14255,6 +14255,17 @@
       "created_at": "2026-11-20T22:25:21.820993-08:00",
       "updated_at": "2026-11-20T22:25:21.820993-08:00",
       "metadata_json": "{\"branch\":\"feat/437-local-cope-b\",\"commit\":\"1c35a06\",\"confidence\":80,\"files\":[\"src/toxicity/runpod_cope_b.rs\",\"src/toxicity/classifier.rs\",\"src/cli/eval_classifiers/models.rs\"]}"
+    },
+    {
+      "id": 1306,
+      "change_id": "6642dbbd-eba4-49b3-834c-2638f2e5f2e6",
+      "node_type": "outcome",
+      "title": "Tasks 3-6 done: local backend + eval arm + metric label fix; gate local vs runpod PASS 100/100; mutants 9/9 + 4/4 hand; PR #173 opened",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-11-20T22:49:20.318034-08:00",
+      "updated_at": "2026-11-20T22:49:20.318034-08:00",
+      "metadata_json": "{\"branch\":\"feat/437-local-cope-b\",\"commit\":\"3472ac4\",\"confidence\":90}"
     }
   ],
   "edges": [
@@ -29063,6 +29074,17 @@
       "weight": 1.0,
       "rationale": "Rust half",
       "created_at": "2026-11-20T22:25:21.836419-08:00"
+    },
+    {
+      "id": 1357,
+      "from_node_id": 1305,
+      "to_node_id": 1306,
+      "from_change_id": "77ae1783-cf78-4cbe-9145-d95f898fdc4c",
+      "to_change_id": "6642dbbd-eba4-49b3-834c-2638f2e5f2e6",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "result",
+      "created_at": "2026-11-20T22:49:20.336213-08:00"
     }
   ],
   "documents": [

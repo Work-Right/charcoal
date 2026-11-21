@@ -139,7 +139,7 @@ class MlxBackend:
         zero = self.tokenizer.encode("0", add_special_tokens=False)
         one = self.tokenizer.encode("1", add_special_tokens=False)
         if len(zero) != 1 or len(one) != 1:
-            raise SystemExit(f"'0'/'1' are not single tokens: {zero} {one}")
+            raise RuntimeError(f"'0'/'1' are not single tokens: {zero} {one}")
         self.zero_id, self.one_id = zero[0], one[0]
 
         # Token guard: production renders the prompt with plain transformers
@@ -152,7 +152,7 @@ class MlxBackend:
             tokenize=False, add_generation_prompt=True,
         )
         if hf.encode(hf_text, add_special_tokens=False) != self.prompt_tokens(probe):
-            raise SystemExit("MLX prompt tokens differ from the transformers prompt "
+            raise RuntimeError("MLX prompt tokens differ from the transformers prompt "
                              "production uses")
 
     def prompt_tokens(self, content: str) -> list[int]:

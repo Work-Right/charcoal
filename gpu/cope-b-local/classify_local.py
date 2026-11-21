@@ -86,8 +86,11 @@ def cmd_local(args) -> None:
         sys.exit(f"no rows in {args.sample}")
 
     t0 = time.perf_counter()
-    engine = load_engine(args.model, args.policy_version, policy_path=Path(args.policy),
-                         reuse_prefix=not args.no_prefix_cache)
+    try:
+        engine = load_engine(args.model, args.policy_version, policy_path=Path(args.policy),
+                             reuse_prefix=not args.no_prefix_cache)
+    except RuntimeError as exc:  # the engine's startup guards
+        sys.exit(str(exc))
     load_s = time.perf_counter() - t0
     print(f"loaded {args.model} in {load_s:.1f}s; shared prefix {engine.prefix_len} tokens; "
           f"prefix cache {'OFF' if args.no_prefix_cache else 'ON'}", file=sys.stderr)
