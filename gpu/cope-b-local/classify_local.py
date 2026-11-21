@@ -7,8 +7,8 @@ independently:
   local      classify a fixture file with a local MLX model
   reference  classify the same file on the RunPod endpoint (full-precision
              vLLM, i.e. what production uses)
-  compare    agreement between two verdict files, using the same 90% bar as
-             `charcoal classify-gate`
+  compare    agreement between two verdict files, using the bar read from
+             src/cli/classify_gate.rs (the one `charcoal classify-gate` uses)
 
 Why not just point `charcoal classify-gate` at a local server? The gate takes
 two *backend names* and both of these are "runpod" with different URLs, so
