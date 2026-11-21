@@ -761,8 +761,67 @@ mod local_backend {
 
         let backend = build_backend_named("local").expect("local builds without an API key");
         assert_eq!(backend.name(), LOCAL_COPE_B_NAME);
+
+        // Capture this thread's metric events while classifying (pattern from
+        // tests/unit_actions_runner.rs: pin the callsite cache with a bare
+        // global registry, then scope a capturing layer to this thread).
+        let _ = tracing_subscriber::registry().try_init();
+        let seen = MetricBackends::default();
+        let subscriber = tracing_subscriber::registry().with(seen.clone());
+        let guard = tracing::subscriber::set_default(subscriber);
         let v = backend.classify("hello").await.expect("classifies");
+        drop(guard);
+
         assert!(v.toxic_token);
         assert!((v.confidence - 0.97).abs() < 1e-6);
+        // Requirement (spec D4, extended): every metric a local request emits
+        // is labelled local-cope-b, so local timings never pollute the
+        // production RunPod latency and queue-wait figures.
+        let seen = seen.0.lock().unwrap().clone();
+        let timing: Vec<_> = seen
+            .iter()
+            .filter(|(m, _)| m == "classifier_runpod_timing")
+            .collect();
+        assert_eq!(timing.len(), 1, "{seen:?}");
+        assert!(
+            seen.iter().all(|(_, b)| b == LOCAL_COPE_B_NAME),
+            "a metric was labelled with another backend: {seen:?}"
+        );
+    }
+
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+
+    /// (metric, backend) for every event that carries both fields.
+    #[derive(Clone, Default)]
+    struct MetricBackends(std::sync::Arc<std::sync::Mutex<Vec<(String, String)>>>);
+
+    impl<S: tracing::Subscriber> tracing_subscriber::Layer<S> for MetricBackends {
+        fn on_event(
+            &self,
+            event: &tracing::Event<'_>,
+            _ctx: tracing_subscriber::layer::Context<'_, S>,
+        ) {
+            #[derive(Default)]
+            struct Fields {
+                metric: Option<String>,
+                backend: Option<String>,
+            }
+            impl tracing::field::Visit for Fields {
+                fn record_str(&mut self, f: &tracing::field::Field, v: &str) {
+                    match f.name() {
+                        "metric" => self.metric = Some(v.to_string()),
+                        "backend" => self.backend = Some(v.to_string()),
+                        _ => {}
+                    }
+                }
+                fn record_debug(&mut self, _: &tracing::field::Field, _: &dyn std::fmt::Debug) {}
+            }
+            let mut f = Fields::default();
+            event.record(&mut f);
+            if let (Some(m), Some(b)) = (f.metric, f.backend) {
+                self.0.lock().unwrap().push((m, b));
+            }
+        }
     }
 }

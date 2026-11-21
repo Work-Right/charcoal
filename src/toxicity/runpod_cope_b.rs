@@ -438,7 +438,8 @@ impl RunPodCopeBClient {
 
     /// Interpret one job-envelope response as either a terminal batch of
     /// outcomes or a pending signal (poll `/status`).
-    fn parse_batch_job(raw: &str, latency_ms: u32) -> Result<BatchJobOutcome> {
+    /// `backend` labels the timing metric (the client's `name()`).
+    fn parse_batch_job(raw: &str, latency_ms: u32, backend: &str) -> Result<BatchJobOutcome> {
         let env: JobEnvelope = serde_json::from_str(raw)
             .with_context(|| format!("parse RunPod response body: {raw}"))?;
         let status = env.status.as_deref().unwrap_or("").to_ascii_uppercase();
@@ -456,6 +457,7 @@ impl RunPodCopeBClient {
 
         if let Some(out) = env.output {
             crate::observability::classifier_metrics::record_runpod_timing(
+                backend,
                 delay_time_ms,
                 execution_time_ms,
                 latency_ms,
@@ -476,7 +478,7 @@ impl RunPodCopeBClient {
 
     /// Test/entry helper: parse a terminal batch response into outcomes.
     pub fn parse_batch_response(raw: &str, latency_ms: u32) -> Result<Vec<ItemOutcome>> {
-        match Self::parse_batch_job(raw, latency_ms)? {
+        match Self::parse_batch_job(raw, latency_ms, "runpod-cope-b")? {
             BatchJobOutcome::Completed(v) => Ok(v),
             BatchJobOutcome::Pending(id) => {
                 bail!("RunPod job {id} not terminal in the /runsync response (still pending)")
@@ -552,7 +554,7 @@ impl RunPodCopeBClient {
                 }
             };
             let latency_ms: u32 = start.elapsed().as_millis().try_into().unwrap_or(u32::MAX);
-            match Self::parse_batch_job(&body, latency_ms)? {
+            match Self::parse_batch_job(&body, latency_ms, self.name)? {
                 BatchJobOutcome::Completed(v) => return Ok(v),
                 BatchJobOutcome::Pending(_) => continue,
             }
@@ -667,7 +669,7 @@ impl RunPodCopeBClient {
         let observed = retries.get();
         // /runsync may return before the job finishes (cold starts exceed its
         // ~90s wait) — in that case poll /status until terminal.
-        let verdicts = match Self::parse_batch_job(&response, latency_ms)? {
+        let verdicts = match Self::parse_batch_job(&response, latency_ms, self.name)? {
             BatchJobOutcome::Completed(v) => v,
             BatchJobOutcome::Pending(id) => {
                 // The job is still executing server-side on a worker — that IS
