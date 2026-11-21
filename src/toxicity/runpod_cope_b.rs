@@ -477,6 +477,12 @@ impl RunPodCopeBClient {
     }
 
     /// Test/entry helper: parse a terminal batch response into outcomes.
+    ///
+    /// Only the fuzz target and tests call this; no client request goes
+    /// through it. `classify_batch` (`/runsync`) and `poll_status`
+    /// (`/status`) call `parse_batch_job` with the client's own `name()`, so
+    /// the fixed `runpod-cope-b` timing label here never applies to the local
+    /// backend (#437).
     pub fn parse_batch_response(raw: &str, latency_ms: u32) -> Result<Vec<ItemOutcome>> {
         match Self::parse_batch_job(raw, latency_ms, "runpod-cope-b")? {
             BatchJobOutcome::Completed(v) => Ok(v),
