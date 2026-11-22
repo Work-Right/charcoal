@@ -1,5 +1,13 @@
 [
   {
+    "hash": "c6092f6d65b6a771b153246ce47c97a7b410448e",
+    "short_hash": "c6092f6",
+    "author": "Bryan Guffey",
+    "date": "2026-11-21T23:46:40-08:00",
+    "message": "docs(439): research chainlink → Jira Cloud migration\n\nInventory of what chainlink does here (tracking vs guardrails), the\nAtlassian MCP v2 / Automation / Rovo capabilities that matter, a target\nCHAR project setup, the issue-gate redesign, and an import plan that\nkeeps #N == CHAR-N.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "files_changed": 3
+  },
+  {
     "hash": "6525241fd4245472f04b943ce04294496a34d3d5",
     "short_hash": "6525241",
     "author": "Bryan Guffey",
