@@ -46,7 +46,7 @@ hook, the session machinery and the issue-database backups are deleted. Old
 | Lint + stub check after edit (`post-edit-check.py`) | **Delete** | The pre-push hook and CI already run clippy and the tests |
 | Web-fetch rules + `safe-fetch` MCP (`pre-web-check.py`) | **Keep for now** | Prompt-injection defence is a separate question. Move `web.md` to `.claude/rules/` so it no longer lives in `.chainlink/`. Review separately. |
 | Pre-commit chainlink export + `issues.db` R2 backup | **Delete** | Jira is the system of record. The deciduous backup stays. |
-| Changelog line on `issue close` | **Delete** | It wrote entries backwards 7×. Handwritten entries continue, and the Release Notes Drafter can help if the plan includes Rovo. |
+| Changelog line on `issue close` | **Delete** | It wrote entries backwards 7×. Handwritten entries continue, with the Release Notes Drafter (Premium has it) as a first draft. |
 
 What's left to maintain: one CI check, one block of permission settings, and a
 short section in CLAUDE.md.
@@ -65,12 +65,26 @@ short section in CLAUDE.md.
   `git log staging..main`.
 - **GitHub for Jira** installed on `Work-Right/charcoal`. A key in the branch
   name, commit or PR title links the work to the item automatically.
-- **Automation:** optional, depending on the plan. Free allows 150 steps a
-  month in total (billed per step from 2026-12-03), which covers about one
-  rule at our pace. Start with just **"PR merged into `main` → Done"**. Agents
-  move items between the other statuses through the MCP as part of normal
-  work. Add *In Review* and *On Staging* rules if the plan is Standard or
-  higher.
+- **Automation (site is Premium: 750 steps per user per month, pooled
+  across the site, billed per step from 2026-12-03):** three rules.
+  - PR opened → *In Review*
+  - merged into `staging` → *On Staging*
+  - merged into `main` → *Done*, plus add the item to the next fix version
+
+  Estimated use is 300–600 steps a month, which fits. **Set an overage cap**
+  in automation settings, because overage ($0.50 per 1,000 steps) is on by
+  default. Agents still make in-flight moves (*In Progress*) through the MCP.
+- **Rovo AI (Premium: 70 credits per user per month, pooled; overage
+  $0.01/credit from 2026-12-03, on by default):** worth using for
+  - duplicate detection when creating items
+  - AI work breakdown for epics
+  - natural-language JQL
+  - the **Release Notes Drafter** on each fix version, as a starting point
+    for `CHANGELOG.md` entries (reviewed by a human, not auto-committed)
+
+  70 credits is a small budget, so **set a credit cap**, use these on
+  demand, and don't wire them into automation rules. Keep the coding agents
+  (Rovo Dev in Jira, Claude Agent for Jira) off for now (§1).
 - **Labels:** normalised during the import (`fix`→`bug`,
   `perf`→`performance`, `enhancement`→`feature`, …).
 - **Saved filter "Ready":** `project = CHAR AND statusCategory = "To Do" AND
@@ -231,9 +245,9 @@ half a day. Net code change is strongly negative.
      move can be "export chainlink to an archive file, create a Jira
      project, carry over only the open issues". That's about an hour, not a
      day.
-2. **Plan level: still open.** It only decides how many automation rules
-   are affordable, so it doesn't block anything. Assume Free (one rule:
-   "merged to `main` → Done") until confirmed.
+2. **Plan level: Premium.** All three automation rules fit, and the Rovo AI
+   features are available (§3). Set caps on both automation overage and
+   Rovo credit overage.
 3. **Key `CHAR`, team-managed Kanban:** confirmed.
 4. **`git merge`:** allowed (as in §4c).
 5. **Deciduous review: undecided.** Deferred. It becomes a `CHAR` item after

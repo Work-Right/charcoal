@@ -1,5 +1,13 @@
 [
   {
+    "hash": "be2f379ecf55d544a60057ccd8200f48bde614c5",
+    "short_hash": "be2f379",
+    "author": "Bryan Guffey",
+    "date": "2026-11-24T16:40:32-08:00",
+    "message": "docs(439): record decisions and next steps for the Jira migration\n\nTemplate gets a tracker setting (chainlink|jira) so projects can move one\nat a time; charcoal pilots. git merge allowed. Deciduous review deferred.\nProjects are created in the UI because the MCP cannot create them.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "files_changed": 3
+  },
+  {
     "hash": "4d1e6110c75f5b4d99178957485294bce1fa7c42",
     "short_hash": "4d1e611",
     "author": "Bryan Guffey",

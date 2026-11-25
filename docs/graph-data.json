@@ -14453,6 +14453,17 @@
       "created_at": "2026-11-22T00:14:59.851428-08:00",
       "updated_at": "2026-11-22T00:14:59.851428-08:00",
       "metadata_json": "{\"branch\":\"sesh/research-jira-migration-best-practices\",\"commit\":\"4d1e611\",\"confidence\":85}"
+    },
+    {
+      "id": 1324,
+      "change_id": "1f940049-090a-4748-8aae-8cdc9789513e",
+      "node_type": "outcome",
+      "title": "Bryan's decisions recorded: template tracker setting, CHAR Kanban, git merge allowed, deciduous review deferred (be2f379)",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-11-24T16:41:03.171844-08:00",
+      "updated_at": "2026-11-24T16:41:03.171844-08:00",
+      "metadata_json": "{\"branch\":\"sesh/research-jira-migration-best-practices\",\"commit\":\"be2f379\",\"confidence\":90}"
     }
   ],
   "edges": [
@@ -29514,6 +29525,17 @@
       "weight": 1.0,
       "rationale": "Result",
       "created_at": "2026-11-22T00:15:03.246890-08:00"
+    },
+    {
+      "id": 1380,
+      "from_node_id": 1323,
+      "to_node_id": 1324,
+      "from_change_id": "47f93dcf-af5f-47f0-8aa0-23b3c894da31",
+      "to_change_id": "1f940049-090a-4748-8aae-8cdc9789513e",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Follow-up decisions",
+      "created_at": "2026-11-24T16:41:08.746631-08:00"
     }
   ],
   "documents": [
