@@ -1,5 +1,13 @@
 [
   {
+    "hash": "0fe35a6a99b3dfee3a1f6d15805a7c5bd8afc062",
+    "short_hash": "0fe35a6",
+    "author": "Bryan Guffey",
+    "date": "2026-11-24T19:34:45-08:00",
+    "message": "feat(440): chainlink → Jira import script with property tests\n\nCreates items one at a time in chainlink ID order so #N == CHAR-N, and\nstops on the first key mismatch. Resumable after a crash, plus a\nread-only verify. Bodies are built as ADF rather than wiki markup,\nbecause 81 issues contain a literal [ and 22 contain {, and Jira wiki\nmarkup would misread both. 20 property tests; 28/28 hand-made mutants\nkilled.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "files_changed": 4
+  },
+  {
     "hash": "3430555130848ed495d0af9bc2af6872370fe355",
     "short_hash": "3430555",
     "author": "Bryan Guffey",

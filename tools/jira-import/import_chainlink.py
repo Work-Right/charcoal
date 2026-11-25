@@ -550,6 +550,21 @@ def cmd_run(args) -> None:
     print(f"done: {limit} items in {args.project}")
 
 
+def blocks_in_jira(have: dict[int, dict]) -> set[tuple[int, int]]:
+    """(blocker, blocked) pairs as Jira records them.
+
+    In an item's `issuelinks`, an entry carrying `outwardIssue` reads
+    "<this item> <type.outward> <outwardIssue>". For Blocks that is "this
+    blocks that". Each link appears on both items, so the set dedupes them.
+    """
+    pairs = set()
+    for n, row in have.items():
+        for link in row["fields"].get("issuelinks", []):
+            if link["type"]["name"] == "Blocks" and "outwardIssue" in link:
+                pairs.add((n, key_number(link["outwardIssue"]["key"])))
+    return pairs
+
+
 def link_all(jira: Jira, project: str, relations, blocks) -> None:
     have = existing_items(jira, project)
     present = set()
@@ -561,10 +576,15 @@ def link_all(jira: Jira, project: str, relations, blocks) -> None:
     for name, a, b in wanted:
         if frozenset((a, b)) in present:
             continue
+        # Jira's POST body is the reverse of how a link reads: the item named
+        # as `inwardIssue` gets the type's OUTWARD verb. So
+        # {inwardIssue: A, outwardIssue: B} with Blocks means "A blocks B".
+        # The first CHARX dry run had these swapped and every block pointed
+        # backwards. cmd_verify now checks direction, not just the count.
         jira.call("POST", "/rest/api/2/issueLink", {
             "type": {"name": name},
-            "outwardIssue": {"key": expected_key(project, a)},
-            "inwardIssue": {"key": expected_key(project, b)},
+            "inwardIssue": {"key": expected_key(project, a)},
+            "outwardIssue": {"key": expected_key(project, b)},
         })
         present.add(frozenset((a, b)))
 
@@ -595,6 +615,11 @@ def cmd_verify(args) -> None:
     links = sum(len(r["fields"].get("issuelinks", [])) for r in have.values()) // 2
     if links != len(relations) + len(blocks):
         problems.append(f"{links} links in Jira, expected {len(relations) + len(blocks)}")
+    got_blocks = blocks_in_jira(have)
+    for a, b in sorted(set(blocks) - got_blocks):
+        problems.append(f"#{a} should block #{b}, but Jira does not say so")
+    for a, b in sorted(got_blocks - set(blocks)):
+        problems.append(f"Jira says #{a} blocks #{b}, chainlink does not")
     print(f"checked {len(issues)} issues, {links} links: {len(problems)} problem(s)")
     for p in problems[:50]:
         print("  " + p)

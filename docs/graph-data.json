@@ -14475,6 +14475,17 @@
       "created_at": "2026-11-24T19:29:05.439182-08:00",
       "updated_at": "2026-11-24T19:29:05.439182-08:00",
       "metadata_json": "{\"branch\":\"sesh/research-jira-migration-best-practices\",\"commit\":\"3430555\",\"confidence\":80,\"files\":[\"tools/jira-import/import_chainlink.py\"]}"
+    },
+    {
+      "id": 1326,
+      "change_id": "1727cc16-14d6-4231-b128-231e19a99c08",
+      "node_type": "outcome",
+      "title": "Import script + 20 property tests, 28/28 mutants killed; offline plan validated on all 867 real bodies; network run blocked on auth email",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-11-24T19:35:01.763931-08:00",
+      "updated_at": "2026-11-24T19:35:01.763931-08:00",
+      "metadata_json": "{\"branch\":\"sesh/research-jira-migration-best-practices\",\"commit\":\"0fe35a6\",\"confidence\":85}"
     }
   ],
   "edges": [
@@ -29558,6 +29569,17 @@
       "weight": 1.0,
       "rationale": "Implements import step of slim plan",
       "created_at": "2026-11-24T19:29:12.232993-08:00"
+    },
+    {
+      "id": 1382,
+      "from_node_id": 1325,
+      "to_node_id": 1326,
+      "from_change_id": "fd82ae65-e5f8-467e-93d9-10e46d451fdd",
+      "to_change_id": "1727cc16-14d6-4231-b128-231e19a99c08",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Result",
+      "created_at": "2026-11-24T19:35:06.270360-08:00"
     }
   ],
   "documents": [

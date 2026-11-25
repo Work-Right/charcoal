@@ -259,6 +259,22 @@ class Structure(unittest.TestCase):
             assert_well_formed(self, f["description"]["content"])
             self.assertIn(f"chainlink #{issue.id}", flat(f["description"]["content"]))
 
+    # Invariant: blocks_in_jira reads Jira's GET shape back into exactly the
+    # (blocker, blocked) pairs, with no reversal. Each link shows on both
+    # items: the blocker sees it as outwardIssue, the blocked as inwardIssue.
+    # Relates links are ignored.
+    @given(st.sets(st.tuples(st.integers(1, 30), st.integers(1, 30)).filter(lambda t: t[0] != t[1]), max_size=10),
+           st.sets(st.tuples(st.integers(1, 30), st.integers(1, 30)), max_size=5))
+    def test_blocks_direction(self, blocks, relates):
+        have = {n: {"fields": {"issuelinks": []}} for n in range(1, 31)}
+        k = lambda n: f"CHARX-{n}"
+        for a, b in blocks:
+            have[a]["fields"]["issuelinks"].append({"type": {"name": "Blocks"}, "outwardIssue": {"key": k(b)}})
+            have[b]["fields"]["issuelinks"].append({"type": {"name": "Blocks"}, "inwardIssue": {"key": k(a)}})
+        for a, b in relates:
+            have[a]["fields"]["issuelinks"].append({"type": {"name": "Relates"}, "outwardIssue": {"key": k(b)}})
+        self.assertEqual(ic.blocks_in_jira(have), blocks)
+
     # Invariant: key_number inverts expected_key.
     @given(st.from_regex(r"[A-Z][A-Z0-9]{1,9}", fullmatch=True), st.integers(min_value=1, max_value=10**6))
     def test_key_roundtrip(self, project, n):
