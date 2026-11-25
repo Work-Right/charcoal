@@ -74,17 +74,22 @@ short section in CLAUDE.md.
   Estimated use is 300–600 steps a month, which fits. **Set an overage cap**
   in automation settings, because overage ($0.50 per 1,000 steps) is on by
   default. Agents still make in-flight moves (*In Progress*) through the MCP.
-- **Rovo AI (Premium: 70 credits per user per month, pooled; overage
-  $0.01/credit from 2026-12-03, on by default):** worth using for
-  - duplicate detection when creating items
-  - AI work breakdown for epics
-  - natural-language JQL
-  - the **Release Notes Drafter** on each fix version, as a starting point
-    for `CHANGELOG.md` entries (reviewed by a human, not auto-committed)
+- **Rovo AI (Teamwork Collection Premium: 700 credits per user per month,
+  pooled; overage $0.01/credit from 2026-12-03, on by default):** a budget
+  big enough to put AI into the workflow, not just use it on demand:
+  - **On create (automation + Rovo):** run the Triage agent to flag likely
+    duplicates and suggest labels, posted as a comment. At about 10 credits a
+    run and a few new items a day, that's ≈100–300 credits a month.
+  - **On fix-version release:** the **Release Notes Drafter** drafts the
+    changelog text into the version description. A human still edits it into
+    `CHANGELOG.md`.
+  - **On demand:** AI work breakdown for epics, the Readiness Checker before
+    starting a big item, and natural-language JQL.
 
-  70 credits is a small budget, so **set a credit cap**, use these on
-  demand, and don't wire them into automation rules. Keep the coding agents
-  (Rovo Dev in Jira, Claude Agent for Jira) off for now (§1).
+  Still **set a credit cap**: overage bills by default. The coding agents
+  (Rovo Dev in Jira, Claude Agent for Jira) stay off for now. That's about
+  skipping our tests-first and review discipline, not cost (§1). With this
+  budget, a trial on one docs-only item is cheap whenever you want it.
 - **Labels:** normalised during the import (`fix`→`bug`,
   `perf`→`performance`, `enhancement`→`feature`, …).
 - **Saved filter "Ready":** `project = CHAR AND statusCategory = "To Do" AND
@@ -245,8 +250,9 @@ half a day. Net code change is strongly negative.
      move can be "export chainlink to an archive file, create a Jira
      project, carry over only the open issues". That's about an hour, not a
      day.
-2. **Plan level: Premium.** All three automation rules fit, and the Rovo AI
-   features are available (§3). Set caps on both automation overage and
+2. **Plan level: Teamwork Collection, Premium** (700 Rovo credits per user
+   per month). All three automation rules fit, and Rovo can run inside the
+   triage and release steps (§3). Set caps on both automation overage and
    Rovo credit overage.
 3. **Key `CHAR`, team-managed Kanban:** confirmed.
 4. **`git merge`:** allowed (as in §4c).
