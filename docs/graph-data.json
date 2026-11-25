@@ -14464,6 +14464,17 @@
       "created_at": "2026-11-24T16:41:03.171844-08:00",
       "updated_at": "2026-11-24T16:41:03.171844-08:00",
       "metadata_json": "{\"branch\":\"sesh/research-jira-migration-best-practices\",\"commit\":\"be2f379\",\"confidence\":90}"
+    },
+    {
+      "id": 1325,
+      "change_id": "fd82ae65-e5f8-467e-93d9-10e46d451fdd",
+      "node_type": "action",
+      "title": "Write chainlink→Jira import script (tools/jira-import), dry-run target CHARX",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-11-24T19:29:05.439182-08:00",
+      "updated_at": "2026-11-24T19:29:05.439182-08:00",
+      "metadata_json": "{\"branch\":\"sesh/research-jira-migration-best-practices\",\"commit\":\"3430555\",\"confidence\":80,\"files\":[\"tools/jira-import/import_chainlink.py\"]}"
     }
   ],
   "edges": [
@@ -29536,6 +29547,17 @@
       "weight": 1.0,
       "rationale": "Follow-up decisions",
       "created_at": "2026-11-24T16:41:08.746631-08:00"
+    },
+    {
+      "id": 1381,
+      "from_node_id": 1321,
+      "to_node_id": 1325,
+      "from_change_id": "b1194a06-fa68-47e7-946b-ea41c33dbc0e",
+      "to_change_id": "fd82ae65-e5f8-467e-93d9-10e46d451fdd",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Implements import step of slim plan",
+      "created_at": "2026-11-24T19:29:12.232993-08:00"
     }
   ],
   "documents": [

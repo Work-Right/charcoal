@@ -1,5 +1,13 @@
 [
   {
+    "hash": "3430555130848ed495d0af9bc2af6872370fe355",
+    "short_hash": "3430555",
+    "author": "Bryan Guffey",
+    "date": "2026-11-24T19:26:44-08:00",
+    "message": "docs(439): Teamwork Collection Premium means 700 Rovo credits\n\nWith 10x the credit budget, Rovo triage on create and the Release Notes\nDrafter on version release move into the workflow instead of on-demand.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "files_changed": 1
+  },
+  {
     "hash": "be2f379ecf55d544a60057ccd8200f48bde614c5",
     "short_hash": "be2f379",
     "author": "Bryan Guffey",
