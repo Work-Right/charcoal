@@ -1,5 +1,13 @@
 [
   {
+    "hash": "4d1e6110c75f5b4d99178957485294bce1fa7c42",
+    "short_hash": "4d1e611",
+    "author": "Bryan Guffey",
+    "date": "2026-11-22T00:14:39-08:00",
+    "message": "docs(439): slim the Jira migration plan\n\nJira becomes the only tracker, the issue rule is enforced once at merge\n(PR title key check), the git blocklist moves to native Claude Code\npermissions, and the chainlink hooks and session machinery are deleted.\nRecords why Beads and the hook-rebuild option were rejected.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "files_changed": 3
+  },
+  {
     "hash": "c6092f6d65b6a771b153246ce47c97a7b410448e",
     "short_hash": "c6092f6",
     "author": "Bryan Guffey",

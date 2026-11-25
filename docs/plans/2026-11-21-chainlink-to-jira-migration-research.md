@@ -213,18 +213,62 @@ half a day. Net code change is strongly negative.
 
 ---
 
-## 7. Decisions for you
+## 7. Decisions (answered 2026-11-24)
 
-1. **Template.** These hooks come from your project template, so the next
-   template sync would put them back. Either remove them from the template
-   (your other projects benefit too), or mark them as opted out for charcoal.
-   *Recommend: remove from the template.*
-2. **Plan level of `makeworkbetter`:** Free (no Rovo AI, about one automation
-   rule) or Standard or higher? I couldn't read it from the MCP.
-3. **Key `CHAR`**, team-managed Kanban: OK?
-4. **`git merge`:** allowed (as in §4c) or blocked?
-5. **Later, separately:** give deciduous's "log every action in real time"
-   rule the same review.
+1. **Template: remove the chainlink hooks from it. But the other projects
+   moving to Jira is a big lift that comes first.**
+   - Sequence: Charcoal goes first as the pilot.
+   - Until every template-using project has moved, the template can't just
+     delete the hooks, because that would strip tracking from projects still
+     on chainlink.
+   - So the template gets a **tracker setting** (`chainlink` | `jira`).
+     Charcoal sets `jira`, and the template's sync then skips the chainlink
+     hooks for it.
+   - Once the last project moves, the `chainlink` branch of the template is
+     deleted.
+   - **Reducing the per-project lift:** only Charcoal has enough history to
+     justify the ordered `#N` = `CHAR-N` import. For a small project, the
+     move can be "export chainlink to an archive file, create a Jira
+     project, carry over only the open issues". That's about an hour, not a
+     day.
+2. **Plan level: still open.** It only decides how many automation rules
+   are affordable, so it doesn't block anything. Assume Free (one rule:
+   "merged to `main` → Done") until confirmed.
+3. **Key `CHAR`, team-managed Kanban:** confirmed.
+4. **`git merge`:** allowed (as in §4c).
+5. **Deciduous review: undecided.** Deferred. It becomes a `CHAR` item after
+   cutover. The test is whether, over a few weeks, anyone opens the graph
+   to answer a real question that commits, the changelog and pull requests
+   couldn't answer.
+
+---
+
+## 7a. Next steps
+
+**Bryan, in the Jira UI (≈5 min):**
+
+1. Create two software, team-managed Kanban projects: **`CHARX`**
+   (scratch, for the dry run, deleted afterwards) and **`CHAR`**
+   (`Charcoal`). The MCP can't create projects: Atlassian's project-admin
+   tools are off by default, and turning them on just for this isn't worth
+   it.
+2. In `CHAR`, set the workflow columns (To Do / In Progress / In Review /
+   On Staging / Done) and add the Spike work type. Do the same in `CHARX` so
+   the dry run uses the same transitions.
+3. Create a Jira API token at id.atlassian.com and save it in 1Password.
+   The import script reads it through `op read`.
+
+**Then the agent:**
+
+4. Write and dry-run the import script against `CHARX` (§5).
+   - Why a REST script and not the MCP: the import is about 900 calls (439
+     items, 424 comments, 33 links). That's slow through the MCP, near its
+     unpublished rate limit, and it would put every issue body into the
+     conversation for nothing.
+   - Report the verification results. You delete `CHARX`.
+5. Run it for real into `CHAR`, then open the cutover PR (§6).
+6. Template: add the `tracker` setting (§7, item 1). That's a separate PR
+   in the template repo.
 
 ---
 
